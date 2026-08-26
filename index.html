@@ -1,0 +1,2886 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ops Toolkit</title>
+<style>
+  :root{
+    --bg: #0b0f0c;
+    --topbar-bg: #0f1512;
+    --line: #1e2b22;
+    --brand: #5fd97a;
+    --tab-text: #7c9186;
+    --tab-hover-bg: #16201a;
+    --tab-hover-text: #d8e4dc;
+  }
+  :root[data-theme="light"]{
+    --bg: #f4f3ee;
+    --topbar-bg: #ffffff;
+    --line: #d9d5c9;
+    --brand: #1f8a4c;
+    --tab-text: #6b6f68;
+    --tab-hover-bg: #ece9df;
+    --tab-hover-text: #1b1f23;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0; height: 100%;
+    font-family: 'IBM Plex Mono', 'Courier New', monospace;
+    background: var(--bg);
+  }
+  .shell {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+  }
+  .topbar {
+    background: var(--topbar-bg);
+    padding: 10px 14px 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    border-bottom: 2px solid var(--line);
+  }
+  .brand-block {
+    display: flex;
+    flex-direction: column;
+    margin-right: 14px;
+    padding-bottom: 10px;
+  }
+  .brand {
+    color: var(--brand);
+    font-weight: 700;
+    font-size: 14px;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+  .clock {
+    color: var(--tab-text);
+    font-size: 10.5px;
+    letter-spacing: .06em;
+    margin-top: 2px;
+    white-space: nowrap;
+  }
+  .tabbtn {
+    background: transparent;
+    border: none;
+    color: var(--tab-text);
+    padding: 10px 16px;
+    font-size: 12.5px;
+    font-weight: 600;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    cursor: pointer;
+    border-radius: 8px 8px 0 0;
+    transition: background .15s, color .15s;
+    white-space: nowrap;
+    font-family: inherit;
+  }
+  .tabbtn:hover { background: var(--tab-hover-bg); color: var(--tab-hover-text); }
+  .tabbtn.active {
+    background: var(--bg);
+    color: var(--brand);
+    box-shadow: inset 0 2px 0 var(--brand);
+  }
+  .spacer { flex: 1; }
+  .theme-toggle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+    margin-left: 8px;
+    white-space: nowrap;
+  }
+  .theme-label {
+    font-size: 11px;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color: var(--tab-text);
+  }
+  .switch {
+    position: relative;
+    width: 46px;
+    height: 24px;
+    flex-shrink: 0;
+  }
+  .switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+  }
+  .switch-track {
+    position: absolute;
+    cursor: pointer;
+    inset: 0;
+    background: var(--line);
+    border-radius: 999px;
+    transition: background .2s;
+  }
+  .switch-track::before {
+    content: "🌙";
+    position: absolute;
+    height: 20px;
+    width: 20px;
+    left: 2px;
+    top: 2px;
+    background: var(--bg);
+    border-radius: 50%;
+    transition: transform .2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    line-height: 1;
+  }
+  .switch input:checked + .switch-track { background: var(--brand); }
+  .switch input:checked + .switch-track::before {
+    transform: translateX(22px);
+    content: "☀️";
+  }
+  .frames {
+    flex: 1;
+    position: relative;
+    background: var(--bg);
+  }
+  iframe.toolframe {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    border: none;
+    display: none;
+  }
+  iframe.toolframe.active { display: block; }
+</style>
+</head>
+<body>
+<div class="shell">
+  <div class="topbar">
+    <div class="brand-block">
+      <div class="brand">🧰 Ops Toolkit</div>
+      <div class="clock" id="opsClock"></div>
+    </div>
+      <button class="tabbtn active" data-tab="inq">INQ ↔ EQU</button>
+      <button class="tabbtn" data-tab="up">UPrel</button>
+      <button class="tabbtn" data-tab="equ">S&E Deprovision Check</button>
+      <button class="tabbtn" data-tab="date">Date Compare</button>
+    <div class="spacer"></div>
+    <div class="theme-toggle">
+      <span class="theme-label">Day / Night</span>
+      <label class="switch">
+        <input type="checkbox" id="themeSwitch">
+        <span class="switch-track"></span>
+      </label>
+    </div>
+  </div>
+  <div class="frames">
+      <iframe class="toolframe active" id="frame-inq" srcdoc="&lt;!DOCTYPE html&gt;
+&lt;html lang=&quot;en&quot;&gt;
+&lt;head&gt;
+&lt;meta charset=&quot;UTF-8&quot;&gt;
+&lt;title&gt;INQ EQU&lt;/title&gt;
+&lt;style&gt;
+  :root{
+    --bg: #0b0f0c;
+    --panel: #0f1512;
+    --line: #1e2b22;
+    --amber: #ffb454;
+    --green: #5fd97a;
+    --green-dim: #2f8a4a;
+    --text: #d8e4dc;
+    --text-dim: #7c9186;
+    --red: #ff6a6a;
+    --mono: &#x27;IBM Plex Mono&#x27;, &#x27;Courier New&#x27;, monospace;
+          --input-bg: #070a08;
+          --red-tint-bg: #170d0d;
+          --red-tint-border: #3a1e1e;
+          --green-tint-bg: #0d170f;
+          --green-tint-border: #1e3a24;
+          --neutral-tint-bg: #0a1310;
+          --placeholder: #35473c;
+          --tic-color: #8fb8ff;
+        }
+        :root[data-theme=&quot;light&quot;]{
+          --bg: #f4f3ee;
+          --panel: #ffffff;
+          --line: #d9d5c9;
+          --amber: #b5730a;
+          --green: #1f8a4c;
+          --green-dim: #2f8a4a;
+          --text: #1b1f23;
+          --text-dim: #6b6f68;
+          --red: #c0392b;
+          --input-bg: #fbfbf8;
+          --red-tint-bg: #fbeceb;
+          --red-tint-border: #e3b7b3;
+          --green-tint-bg: #eaf7ee;
+          --green-tint-border: #b9dfc4;
+          --neutral-tint-bg: #eef0ea;
+          --placeholder: #b9c2b7;
+          --tic-color: #2b5fa8;
+        }
+
+  *{ box-sizing: border-box; }
+  html,body{
+    margin:0; padding:0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--mono);
+    min-height:100vh;
+  }
+  body{
+    background-image:
+      radial-gradient(circle at 50% 0%, rgba(95,217,122,0.05), transparent 60%);
+  }
+  .scanlines{
+    pointer-events:none;
+    position:fixed; inset:0;
+    background: repeating-linear-gradient(
+      to bottom,
+      rgba(255,255,255,0.015) 0px,
+      rgba(255,255,255,0.015) 1px,
+      transparent 1px,
+      transparent 3px
+    );
+    z-index: 50;
+  }
+  .wrap{
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 28px 20px 60px;
+  }
+  header{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-end;
+    border-bottom: 1px solid var(--line);
+    padding-bottom: 14px;
+    margin-bottom: 22px;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .brand{
+    display:flex; align-items:baseline; gap:10px;
+  }
+  .brand .dot{
+    width:9px; height:9px; border-radius:50%;
+    background: var(--green);
+    box-shadow: 0 0 8px var(--green);
+    display:inline-block;
+  }
+  h1{
+    font-size: 18px;
+    letter-spacing: 2px;
+    margin:0;
+    color: var(--green);
+    text-transform: uppercase;
+    font-weight: 600;
+  }
+  .subtitle{
+    color: var(--text-dim);
+    font-size: 12px;
+    letter-spacing: 1px;
+  }
+  .status{
+    font-size: 11px;
+    color: var(--text-dim);
+    letter-spacing: 1px;
+    text-align:right;
+  }
+  .status b{ color: var(--amber); }
+
+  .panel{
+    border: 1px solid var(--line);
+    background: var(--panel);
+    border-radius: 3px;
+    margin-bottom: 20px;
+  }
+  .panel-head{
+    display:flex; justify-content:space-between; align-items:center;
+    padding: 9px 14px;
+    border-bottom: 1px solid var(--line);
+    font-size: 11px;
+    letter-spacing: 1.5px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+  }
+  textarea{
+    width:100%;
+    min-height: 220px;
+    background: var(--input-bg);
+    color: var(--green);
+    border: none;
+    padding: 14px;
+    font-family: var(--mono);
+    font-size: 12.5px;
+    line-height: 1.5;
+    resize: vertical;
+    outline: none;
+    border-radius: 0 0 3px 3px;
+    caret-color: var(--amber);
+    white-space: pre;
+  }
+  textarea::placeholder{ color: var(--placeholder); }
+
+  .controls{
+    display:flex; gap:10px; padding: 12px 14px; flex-wrap: wrap;
+    border-top: 1px solid var(--line);
+  }
+  button{
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    padding: 9px 16px;
+    border-radius: 2px;
+    cursor: pointer;
+    border: 1px solid var(--green-dim);
+    background: transparent;
+    color: var(--green);
+    transition: all .15s ease;
+  }
+  button:hover{ background: rgba(95,217,122,0.1); }
+  button.primary{
+    background: var(--green);
+    color: #06110a;
+    border-color: var(--green);
+    font-weight: 600;
+  }
+  button.primary:hover{ background: #7cf29a; }
+  button.ghost{
+    border-color: var(--line);
+    color: var(--text-dim);
+  }
+  button.ghost:hover{ color: var(--text); border-color: var(--text-dim); }
+  button:disabled{ opacity:.35; cursor:not-allowed; }
+
+  .meta-grid{
+    display:grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px,1fr));
+    gap: 1px;
+    background: var(--line);
+  }
+  .meta-cell{
+    background: var(--panel);
+    padding: 10px 14px;
+  }
+  .meta-cell .k{
+    font-size: 10px;
+    color: var(--text-dim);
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    margin-bottom: 3px;
+  }
+  .meta-cell .v{
+    font-size: 13.5px;
+    color: var(--amber);
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+
+  table{
+    width:100%;
+    border-collapse: collapse;
+    font-size: 12.5px;
+  }
+  thead th{
+    text-align:left;
+    padding: 9px 12px;
+    background: var(--neutral-tint-bg);
+    color: var(--text-dim);
+    font-size: 10.5px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    border-bottom: 1px solid var(--line);
+    position: sticky; top:0;
+  }
+  tbody td{
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--line);
+    vertical-align: top;
+    color: var(--text);
+  }
+  tbody tr:hover{ background: rgba(95,217,122,0.04); }
+  td.num, th.num{ text-align:right; font-variant-numeric: tabular-nums; }
+  td.seq{ color: var(--text-dim); }
+  td.range{ color: var(--amber); }
+  td.sign-plus{ color: var(--green); font-weight:700; }
+  td.sign-minus{ color: var(--red); font-weight:700; }
+  td.note{ color: var(--text-dim); font-style: italic; }
+  td.tic{ color: var(--tic-color); }
+
+  tfoot td{
+    padding: 10px 12px;
+    border-top: 1px solid var(--green-dim);
+    font-weight: 700;
+    color: var(--green);
+  }
+
+  .table-scroll{
+    max-height: 560px;
+    overflow: auto;
+  }
+
+  .input-panel.collapsed textarea,
+  .input-panel.collapsed .controls{
+    display:none;
+  }
+  .input-panel.collapsed .panel-head{
+    border-bottom: none;
+    border-radius: 3px;
+  }
+  .reveal-btn{
+    background: transparent;
+    border: none;
+    color: var(--green);
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    cursor: pointer;
+    text-decoration: underline;
+    padding: 0;
+  }
+  .reveal-btn:hover{ color: var(--amber); }
+
+  tbody tr.row-selected{
+    background: rgba(255,180,84,0.08);
+  }
+
+  .empty{
+    padding: 40px 20px;
+    text-align:center;
+    color: var(--text-dim);
+    font-size: 12.5px;
+    letter-spacing: .5px;
+  }
+  .empty .glyph{
+    font-size: 26px;
+    color: var(--green-dim);
+    margin-bottom: 10px;
+  }
+
+  .toast{
+    position: fixed;
+    bottom: 22px; left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: var(--panel);
+    border: 1px solid var(--green-dim);
+    color: var(--green);
+    padding: 10px 18px;
+    border-radius: 3px;
+    font-size: 12px;
+    letter-spacing: 1px;
+    opacity: 0;
+    transition: all .25s ease;
+    pointer-events:none;
+    z-index: 100;
+  }
+  .toast.show{
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+
+  footer{
+    margin-top: 24px;
+    text-align:center;
+    color: var(--text-dim);
+    font-size: 10.5px;
+    letter-spacing: 1px;
+  }
+
+  ::-webkit-scrollbar{ width:10px; height:10px; }
+  ::-webkit-scrollbar-track{ background: var(--panel); }
+  ::-webkit-scrollbar-thumb{ background: var(--line); border-radius: 5px; }
+  ::-webkit-scrollbar-thumb:hover{ background: var(--green-dim); }
+&lt;/style&gt;
+&lt;/head&gt;
+&lt;body&gt;
+&lt;div class=&quot;scanlines&quot;&gt;&lt;/div&gt;
+&lt;div class=&quot;wrap&quot;&gt;
+
+  &lt;header&gt;
+    &lt;div class=&quot;brand&quot;&gt;
+      &lt;span class=&quot;dot&quot;&gt;&lt;/span&gt;
+      &lt;div&gt;
+        &lt;h1&gt;INQ · EQU&lt;/h1&gt;
+        &lt;div class=&quot;subtitle&quot;&gt;Equipment Inquiry&lt;/div&gt;
+      &lt;/div&gt;
+    &lt;/div&gt;
+    &lt;div class=&quot;status&quot;&gt;IDEA BY &lt;b&gt;x170535&lt;/b&gt;&lt;/div&gt;
+  &lt;/header&gt;
+
+  &lt;div class=&quot;panel input-panel&quot; id=&quot;inputPanel&quot;&gt;
+    &lt;div class=&quot;panel-head&quot;&gt;
+      &lt;span&gt;▍ raw input&lt;/span&gt;
+      &lt;span style=&quot;display:flex; align-items:center; gap:14px;&quot;&gt;
+        &lt;span id=&quot;lineCount&quot;&gt;0 lines&lt;/span&gt;
+        &lt;button class=&quot;reveal-btn&quot; id=&quot;revealBtn&quot; style=&quot;display:none;&quot;&gt;show input&lt;/button&gt;
+      &lt;/span&gt;
+    &lt;/div&gt;
+    &lt;textarea id=&quot;input&quot; placeholder=&quot;Paste the raw INQ EQU screen output here...&quot;&gt;&lt;/textarea&gt;
+    &lt;div class=&quot;controls&quot;&gt;
+      &lt;button class=&quot;primary&quot; id=&quot;parseBtn&quot;&gt;▶ Analyze&lt;/button&gt;
+      &lt;button class=&quot;ghost&quot; id=&quot;sampleBtn&quot;&gt;Load sample&lt;/button&gt;
+      &lt;button class=&quot;ghost&quot; id=&quot;clearBtn&quot;&gt;Clear&lt;/button&gt;
+      &lt;button id=&quot;copyBtn&quot; disabled&gt;Copy as TSV&lt;/button&gt;
+      &lt;button id=&quot;csvBtn&quot; disabled&gt;Copy as CSV&lt;/button&gt;
+      &lt;button class=&quot;ghost&quot; id=&quot;previewOnlyBtn&quot; disabled&gt;Preview only ▾&lt;/button&gt;
+    &lt;/div&gt;
+  &lt;/div&gt;
+
+  &lt;div class=&quot;panel&quot; id=&quot;searchPanel&quot;&gt;
+    &lt;div class=&quot;panel-head&quot;&gt;
+      &lt;span&gt;▍ find a number&lt;/span&gt;
+    &lt;/div&gt;
+    &lt;div style=&quot;padding: 14px; display:flex; gap:10px; flex-wrap:wrap; align-items:center;&quot;&gt;
+      &lt;input type=&quot;text&quot; id=&quot;searchInput&quot; placeholder=&quot;e.g. 780-498-8091 or 8091&quot;
+        style=&quot;flex: 1; min-width: 200px; background:var(--input-bg); border:1px solid var(--line); color:var(--green); font-family:var(--mono); font-size:12.5px; padding:9px 12px; border-radius:2px; outline:none;&quot;&gt;
+      &lt;button class=&quot;primary&quot; id=&quot;searchBtn&quot;&gt;Search&lt;/button&gt;
+      &lt;button class=&quot;ghost&quot; id=&quot;searchClearBtn&quot;&gt;Clear&lt;/button&gt;
+    &lt;/div&gt;
+    &lt;div id=&quot;searchResults&quot; style=&quot;padding: 0 14px 14px;&quot;&gt;&lt;/div&gt;
+  &lt;/div&gt;
+
+  &lt;div id=&quot;output&quot;&gt;&lt;/div&gt;
+
+  &lt;footer&gt;PARSES + / − PREFIXED ITEM LINES · QTY · AMT · FPS · TIC · PORT-IN NOTES&lt;/footer&gt;
+&lt;/div&gt;
+
+&lt;div class=&quot;toast&quot; id=&quot;toast&quot;&gt;Copied&lt;/div&gt;
+
+&lt;script&gt;
+const SAMPLE = ` + 647 5984000                        EQU EQU 0000                  dt: 26/08/21
+ -                                     UPDEQU 0012-                  srn: 262606
+ so: C 647 5984000       15 3U 1 ca:          P 0068364081      org dt: 24/04/22
+ bn: SCARBOROUGH AND       ROUGE HOSPITAL                              iw:      
+ sa:        3050     LAWRENCE AV E      SCARBOROUGH ON         M1P2V5           
+ A S&amp;E________________________________________ QTY AMT_____ FPS TIC__ AC        
+ - V BEC PRI DID ON,416-431-8108-8112            5     0.00 TT  202V6     0001- 
+ + V BEC PRI DID ON,416-431-8108-8110            3     2.25 TT  202V6     0002+ 
+ + V BEC PRI DID ON,416-431-8112                 1     0.75 TT  202V6     0003+ 
+ - V BEC PRI DID ON,416-431-8125-8132            8     0.00 TT  202V6     0004- 
+ + V BEC PRI DID ON,416-431-8126-8128            3     2.25 TT  202V6     0005+ 
+ + V BEC PRI DID ON,416-431-8130-8131            2     1.50 TT  202V6     0006+ 
+ - V BEC PRI DID ON,416-431-8142                 1     0.00 TT  202V6     0007- 
+ - V BEC PRI DID ON,416-431-8164                 1     0.00 TT  202V6     0008- 
+ - V BEC PRI DID ON,416-431-8168-8176            9     0.00 TT  202V6     0009- 
+ + V BEC PRI DID ON,416-431-8168-8173            6     4.50 TT  202V6     0010+ 
+ + V BEC PRI DID ON,416-431-8176                 1     0.75 TT  202V6     0011+ 
+ - V BEC PRI DID ON,416-431-8178-8182            5     0.00 TT  202V6     0012- 
+ + V BEC PRI DID ON,416-431-8178-8180            3     2.25 TT  202V6     0013+ 
+ + V BEC PRI DID ON,416-431-8182                 1     0.75 TT  202V6     0014+ 
+ - V BEC PRI DID ON,416-431-8186-8223           38     0.00 TT  202V6     0015- 
+ + V BEC PRI DID ON,416-431-8186                 1     0.75 TT  202V6     0016+ 
+ + V BEC PRI DID ON,416-431-8188-8211           23    17.25 TT  202V6     0017+ 
+ + V BEC PRI DID ON,416-431-8213-8223           11     8.25 TT  202V6     0018+ 
+ - V BEC PRI DID ON,416-431-8267-8270            4     0.00 TT  202V6     0019- 
+ + V BEC PRI DID ON,416-431-8267-8268            2     0.00 TT  202V6     0020+ 
+ + V BEC PRI DID ON,416-431-8270                 1     0.75 TT  202V6     0021+ 
+ - V BEC PRI DID ON,416-431-8298-8299            2     0.00 TT  202V6     0022- 
+ + V BEC PRI DID ON,416-431-8298                 1     0.75 TT  202V6     0023+ 
+ - BEC PRI FIRST 5 NUM ON,416-289-2950-2954      5     0.00 TT  2D142     0024- 
+ + BEC PRI FIRST 5 NUM ON,416-289-2950-2952      3          TT  2D142     0025+ 
+ + BEC PRI FIRST 5 NUM ON,416-289-2954           1     0.00 TT  2D142     0026+ 
+ - V BEC PRI DID ON,647-251-4730-4732            3     0.00 TT  202V6     0027- 
+ + V BEC PRI DID ON,647-251-4732                 1     0.00 TT  202V6     0028+ `;
+
+const input = document.getElementById(&#x27;input&#x27;);
+const output = document.getElementById(&#x27;output&#x27;);
+const lineCount = document.getElementById(&#x27;lineCount&#x27;);
+const toast = document.getElementById(&#x27;toast&#x27;);
+const copyBtn = document.getElementById(&#x27;copyBtn&#x27;);
+const csvBtn = document.getElementById(&#x27;csvBtn&#x27;);
+const previewOnlyBtn = document.getElementById(&#x27;previewOnlyBtn&#x27;);
+const revealBtn = document.getElementById(&#x27;revealBtn&#x27;);
+const inputPanel = document.getElementById(&#x27;inputPanel&#x27;);
+
+let parsedRows = [];
+let meta = {};
+let currentFilter = &#x27;&#x27;;
+let currentSignFilter = &#x27;&#x27;;
+let visibleRowsGlobal = [];
+let lastRemovedSet = new Set();
+let lastAddedSet = new Set();
+let lastStillRemoved = [];
+let lastStillRemovedByLine = [];
+let lastNewlyAddedOutside = [];
+let lastReturnedByLine = [];
+let lastDuplicateAdded = [];
+let lastDuplicateRemoved = [];
+
+previewOnlyBtn.addEventListener(&#x27;click&#x27;, () =&gt; {
+  inputPanel.classList.add(&#x27;collapsed&#x27;);
+  revealBtn.style.display = &#x27;inline&#x27;;
+});
+revealBtn.addEventListener(&#x27;click&#x27;, () =&gt; {
+  inputPanel.classList.remove(&#x27;collapsed&#x27;);
+  revealBtn.style.display = &#x27;none&#x27;;
+});
+
+input.addEventListener(&#x27;input&#x27;, () =&gt; {
+  const n = input.value ? input.value.split(&#x27;\n&#x27;).length : 0;
+  lineCount.textContent = n + &#x27; line&#x27; + (n === 1 ? &#x27;&#x27; : &#x27;s&#x27;);
+});
+
+document.getElementById(&#x27;sampleBtn&#x27;).addEventListener(&#x27;click&#x27;, () =&gt; {
+  input.value = SAMPLE;
+  input.dispatchEvent(new Event(&#x27;input&#x27;));
+});
+
+document.getElementById(&#x27;clearBtn&#x27;).addEventListener(&#x27;click&#x27;, () =&gt; {
+  input.value = &#x27;&#x27;;
+  input.dispatchEvent(new Event(&#x27;input&#x27;));
+  output.innerHTML = &#x27;&#x27;;
+  parsedRows = [];
+  currentFilter = &#x27;&#x27;;
+  currentSignFilter = &#x27;&#x27;;
+  visibleRowsGlobal = [];
+  lastRemovedSet = new Set();
+  lastAddedSet = new Set();
+  lastStillRemoved = [];
+  lastStillRemovedByLine = [];
+  lastNewlyAddedOutside = [];
+  lastReturnedByLine = [];
+  lastDuplicateAdded = [];
+  lastDuplicateRemoved = [];
+  document.getElementById(&#x27;searchInput&#x27;).value = &#x27;&#x27;;
+  document.getElementById(&#x27;searchResults&#x27;).innerHTML = &#x27;&#x27;;
+  copyBtn.disabled = true;
+  csvBtn.disabled = true;
+  previewOnlyBtn.disabled = true;
+  inputPanel.classList.remove(&#x27;collapsed&#x27;);
+  revealBtn.style.display = &#x27;none&#x27;;
+});
+
+document.getElementById(&#x27;parseBtn&#x27;).addEventListener(&#x27;click&#x27;, parse);
+
+function showToast(msg){
+  toast.textContent = msg;
+  toast.classList.add(&#x27;show&#x27;);
+  setTimeout(() =&gt; toast.classList.remove(&#x27;show&#x27;), 1400);
+}
+
+function esc(s){
+  return (s || &#x27;&#x27;).replace(/&amp;/g,&#x27;&amp;amp;&#x27;).replace(/&lt;/g,&#x27;&amp;lt;&#x27;).replace(/&gt;/g,&#x27;&amp;gt;&#x27;);
+}
+
+function formatNumberRange(raw){
+  const digits = (raw || &#x27;&#x27;).replace(/\D/g, &#x27;&#x27;);
+  if (digits.length === 10){
+    return `${digits.slice(0,3)}-${digits.slice(3,6)}-${digits.slice(6,10)}`;
+  }
+  if (digits.length === 14){
+    return `${digits.slice(0,3)}-${digits.slice(3,6)}-${digits.slice(6,10)}-${digits.slice(10,14)}`;
+  }
+  return raw;
+}
+
+function evaluateNumberFormat(raw){
+  if (!raw) return { issue: false };
+  const digits = raw.replace(/\D/g, &#x27;&#x27;);
+  if (digits.length !== 10 &amp;&amp; digits.length !== 14){
+    return { issue: true };
+  }
+  const expected = digits.length === 10
+    ? `${digits.slice(0,3)}-${digits.slice(3,6)}-${digits.slice(6,10)}`
+    : `${digits.slice(0,3)}-${digits.slice(3,6)}-${digits.slice(6,10)}-${digits.slice(10,14)}`;
+  return { issue: raw.trim() !== expected };
+}
+
+function expandRange(range){
+  if (!range) return [];
+  const parts = range.split(&#x27;-&#x27;);
+  if (parts.length === 3){
+    return [range];
+  }
+  if (parts.length === 4){
+    const digits = range.replace(/\D/g, &#x27;&#x27;);
+    if (digits.length !== 14) return [];
+    const [area, exch, startStr, endStr] = parts;
+    const start = parseInt(startStr, 10);
+    const end = parseInt(endStr, 10);
+    const width = startStr.length;
+    if (isNaN(start) || isNaN(end) || end &lt; start || (end - start) &gt; 10000) return [];
+    const nums = [];
+    for (let n = start; n &lt;= end; n++){
+      nums.push(`${area}-${exch}-${String(n).padStart(width, &#x27;0&#x27;)}`);
+    }
+    return nums;
+  }
+  return [];
+}
+
+function parse(){
+  const raw = input.value;
+  if (!raw || !raw.trim()){
+    output.innerHTML = `&lt;div class=&quot;panel&quot;&gt;&lt;div class=&quot;empty&quot;&gt;&lt;div class=&quot;glyph&quot;&gt;▍&lt;/div&gt;No input to analyze. Paste data above, or load the sample.&lt;/div&gt;&lt;/div&gt;`;
+    parsedRows = [];
+    copyBtn.disabled = true;
+    csvBtn.disabled = true;
+    return;
+  }
+
+  const lines = raw.split(&#x27;\n&#x27;);
+
+  const itemRe = /^\s*([+-])\s+(.+?),(.*?)\s+(\d+)\s+(?:([\d.]+)\s+)?(\S+)\s+(\S+)\s+(\d+)([+-])\s*$/;
+  const noteNumberRe = /^\s*([+-])\s+,?\s*([\d\-]{7,})\s*(?:\(([^)]*)\)|([A-Za-z][\w]*))?\s*(\d+)([+-])\s*$/;
+  const noteRe = /^\s*([+-])\s+,?\s*(.*?)\s+(\d+)([+-])\s*$/;
+
+  function isPhoneLike(s){ return /^[\d\-]+$/.test(s); }
+
+  function splitValueAndTag(rest){
+    rest = (rest || &#x27;&#x27;).trim();
+    if (!rest) return { value: &#x27;&#x27;, tag: &#x27;&#x27; };
+    const m = /^(\S+)\s*(.*)$/.exec(rest);
+    if (!m) return { value: rest, tag: &#x27;&#x27; };
+    let value = m[1];
+    let tag = m[2].trim();
+    if (tag.startsWith(&#x27;(&#x27;) &amp;&amp; tag.endsWith(&#x27;)&#x27;)) tag = tag.slice(1, -1).trim();
+    return { value, tag };
+  }
+
+  const headerRe = /^\s*([+-])\s+(\d+)\s+(\d+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\d+)\s+dt:\s*(\S+)/;
+  const srnRe = /srn:\s*(\S+)/;
+  const orgDtRe = /org dt:\s*(\S+)/;
+  const caRe = /ca:\s*(\S+)\s+(\S+)/;
+  const soRe = /so:\s*(.+?)\s+\S{2}\s+\d+\s+ca:/;
+  const bnRe = /^\s*bn:\s*(.+?)\s{2,}/;
+  const saRe = /^\s*sa:\s*(.+)$/;
+
+  meta = {};
+  const rows = [];
+
+  for (const line of lines){
+    if (!line.trim()) continue;
+
+    let m;
+    if ((m = headerRe.exec(line))) {
+      meta[&#x27;account&#x27;] = m[2] + &#x27; &#x27; + m[3];
+      meta[&#x27;type&#x27;] = m[4] + &#x27; &#x27; + m[5] + &#x27; &#x27; + m[6] + &#x27; &#x27; + m[7];
+      meta[&#x27;date&#x27;] = m[9];
+      continue;
+    }
+    if ((m = srnRe.exec(line))) meta[&#x27;srn&#x27;] = m[1];
+    if ((m = orgDtRe.exec(line))) meta[&#x27;org_date&#x27;] = m[1];
+    if ((m = caRe.exec(line))) meta[&#x27;ca&#x27;] = m[1] + &#x27; &#x27; + m[2];
+    if ((m = soRe.exec(line))) meta[&#x27;service_order&#x27;] = m[1].replace(/\s+/g, &#x27; &#x27;).trim();
+    if ((m = bnRe.exec(line))) meta[&#x27;billing_name&#x27;] = m[1].trim();
+    if ((m = saRe.exec(line)) &amp;&amp; !line.includes(&#x27;AMT&#x27;)) meta[&#x27;service_addr&#x27;] = m[1].trim();
+
+    if ((m = itemRe.exec(line))){
+      const { value, tag } = splitValueAndTag(m[3]);
+      let range = &#x27;&#x27;;
+      let note = tag;
+      let formatIssue = false;
+      if (value){
+        if (isPhoneLike(value)){
+          range = formatNumberRange(value);
+          formatIssue = evaluateNumberFormat(value).issue;
+        } else {
+          note = note ? value + &#x27; / &#x27; + note : value;
+        }
+      }
+      rows.push({
+        seq: m[8],
+        sign: m[1],
+        desc: m[2].trim(),
+        range: range,
+        qty: parseFloat(m[4]),
+        amt: m[5] !== undefined ? parseFloat(m[5]) : null,
+        fps: m[6],
+        tic: m[7],
+        note: note,
+        formatIssue: formatIssue
+      });
+      continue;
+    }
+    if ((m = noteNumberRe.exec(line))){
+      const note = (m[3] || m[4] || &#x27;&#x27;).trim();
+      const rawNum = m[2];
+      rows.push({
+        seq: m[5],
+        sign: m[1],
+        desc: &#x27;&#x27;,
+        range: formatNumberRange(rawNum),
+        qty: null,
+        amt: null,
+        fps: &#x27;&#x27;,
+        tic: &#x27;&#x27;,
+        note: note,
+        formatIssue: evaluateNumberFormat(rawNum).issue
+      });
+      continue;
+    }
+    if ((m = noteRe.exec(line))){
+      const noteText = m[2].trim();
+      if (!noteText) continue;
+
+      if (rows.length){
+        rows[rows.length - 1].note = rows[rows.length - 1].note
+          ? rows[rows.length - 1].note + &#x27; / &#x27; + noteText
+          : noteText;
+      }
+    }
+  }
+
+  parsedRows = rows;
+  render();
+}
+
+function render(){
+  if (!parsedRows.length){
+    output.innerHTML = `&lt;div class=&quot;panel&quot;&gt;&lt;div class=&quot;empty&quot;&gt;&lt;div class=&quot;glyph&quot;&gt;▍&lt;/div&gt;No item lines matched. Check the pasted format.&lt;/div&gt;&lt;/div&gt;`;
+    copyBtn.disabled = true;
+    csvBtn.disabled = true;
+    previewOnlyBtn.disabled = true;
+    return;
+  }
+
+  const visibleRows = parsedRows.filter(r =&gt; {
+    if (currentSignFilter &amp;&amp; r.sign !== currentSignFilter) return false;
+    if (currentFilter &amp;&amp; !r.range.replace(/\D/g,&#x27;&#x27;).startsWith(currentFilter.replace(/\D/g,&#x27;&#x27;))) return false;
+    return true;
+  });
+  visibleRowsGlobal = visibleRows;
+
+  const totalQty = visibleRows.reduce((a,r) =&gt; a + (r.qty == null ? 0 : (r.sign === &#x27;-&#x27; ? -r.qty : r.qty)), 0);
+  const totalAmt = visibleRows.reduce((a,r) =&gt; a + (r.amt == null ? 0 : (r.sign === &#x27;-&#x27; ? -r.amt : r.amt)), 0);
+
+  const removedSet = new Set();
+  const addedSet = new Set();
+  for (const r of parsedRows){
+    if (!r.range) continue;
+    const nums = expandRange(r.range);
+    if (r.sign === &#x27;-&#x27;){
+      nums.forEach(n =&gt; removedSet.add(n));
+    } else {
+      nums.forEach(n =&gt; addedSet.add(n));
+    }
+  }
+  const stillRemoved = [...removedSet].filter(n =&gt; !addedSet.has(n)).sort();
+  const newlyAddedOutside = [...addedSet].filter(n =&gt; !removedSet.has(n)).sort();
+
+  const stillRemovedByLine = [];
+  const returnedByLine = [];
+  for (const r of parsedRows){
+    if (r.sign !== &#x27;-&#x27; || !r.range) continue;
+    const nums = expandRange(r.range);
+    if (!nums.length) continue;
+    const missing = nums.filter(n =&gt; !addedSet.has(n));
+    const returned = nums.filter(n =&gt; addedSet.has(n));
+    if (missing.length){
+      stillRemovedByLine.push({ seq: r.seq, range: r.range, desc: r.desc, missing });
+    }
+    if (returned.length){
+      returnedByLine.push({ seq: r.seq, range: r.range, desc: r.desc, returned });
+    }
+  }
+  lastStillRemovedByLine = stillRemovedByLine;
+  lastReturnedByLine = returnedByLine;
+
+  const addedOccurrences = {};
+  const removedOccurrences = {};
+  for (const r of parsedRows){
+    if (!r.range) continue;
+    const target = r.sign === &#x27;+&#x27; ? addedOccurrences : removedOccurrences;
+    for (const n of expandRange(r.range)){
+      if (!target[n]) target[n] = [];
+      target[n].push(r.seq);
+    }
+  }
+  const duplicateAdded = Object.entries(addedOccurrences)
+    .filter(([, seqs]) =&gt; seqs.length &gt; 1)
+    .map(([number, seqs]) =&gt; ({ number, seqs }))
+    .sort((a, b) =&gt; a.number.localeCompare(b.number));
+  const duplicateRemoved = Object.entries(removedOccurrences)
+    .filter(([, seqs]) =&gt; seqs.length &gt; 1)
+    .map(([number, seqs]) =&gt; ({ number, seqs }))
+    .sort((a, b) =&gt; a.number.localeCompare(b.number));
+
+  lastDuplicateAdded = duplicateAdded;
+  lastDuplicateRemoved = duplicateRemoved;
+
+  lastRemovedSet = removedSet;
+  lastAddedSet = addedSet;
+  lastStillRemoved = stillRemoved;
+  lastNewlyAddedOutside = newlyAddedOutside;
+
+  const metaHtml = Object.keys(meta).length ? `
+    &lt;div class=&quot;panel&quot;&gt;
+      &lt;div class=&quot;panel-head&quot;&gt;&lt;span&gt;▍ account summary&lt;/span&gt;&lt;/div&gt;
+      &lt;div class=&quot;meta-grid&quot;&gt;
+        ${meta.service_order ? `&lt;div class=&quot;meta-cell&quot;&gt;&lt;div class=&quot;k&quot;&gt;Service Order&lt;/div&gt;&lt;div class=&quot;v&quot;&gt;${esc(meta.service_order)}&lt;/div&gt;&lt;/div&gt;` : &#x27;&#x27;}
+        ${meta.account ? `&lt;div class=&quot;meta-cell&quot;&gt;&lt;div class=&quot;k&quot;&gt;Account&lt;/div&gt;&lt;div class=&quot;v&quot;&gt;${esc(meta.account)}&lt;/div&gt;&lt;/div&gt;` : &#x27;&#x27;}
+        ${meta.billing_name ? `&lt;div class=&quot;meta-cell&quot;&gt;&lt;div class=&quot;k&quot;&gt;Billing Name&lt;/div&gt;&lt;div class=&quot;v&quot;&gt;${esc(meta.billing_name)}&lt;/div&gt;&lt;/div&gt;` : &#x27;&#x27;}
+        ${meta.service_addr ? `&lt;div class=&quot;meta-cell&quot;&gt;&lt;div class=&quot;k&quot;&gt;Service Address&lt;/div&gt;&lt;div class=&quot;v&quot;&gt;${esc(meta.service_addr)}&lt;/div&gt;&lt;/div&gt;` : &#x27;&#x27;}
+        ${meta.type ? `&lt;div class=&quot;meta-cell&quot;&gt;&lt;div class=&quot;k&quot;&gt;Type&lt;/div&gt;&lt;div class=&quot;v&quot;&gt;${esc(meta.type)}&lt;/div&gt;&lt;/div&gt;` : &#x27;&#x27;}
+        ${meta.date ? `&lt;div class=&quot;meta-cell&quot;&gt;&lt;div class=&quot;k&quot;&gt;Date&lt;/div&gt;&lt;div class=&quot;v&quot;&gt;${esc(meta.date)}&lt;/div&gt;&lt;/div&gt;` : &#x27;&#x27;}
+        ${meta.ca ? `&lt;div class=&quot;meta-cell&quot;&gt;&lt;div class=&quot;k&quot;&gt;CA&lt;/div&gt;&lt;div class=&quot;v&quot;&gt;${esc(meta.ca)}&lt;/div&gt;&lt;/div&gt;` : &#x27;&#x27;}
+      &lt;/div&gt;
+    &lt;/div&gt;` : &#x27;&#x27;;
+
+  function isSuspiciousAmt(r){
+    if (r.sign !== &#x27;+&#x27;) return false;
+    if (!r.tic || !r.tic.toUpperCase().includes(&#x27;V&#x27;)) return false;
+    return r.amt === 0 || r.amt === null;
+  }
+
+  function isInvalidRange(range){
+    if (!range) return false;
+    const parts = range.split(&#x27;-&#x27;);
+    if (parts.length !== 4) return false;
+    const start = parseInt(parts[2], 10);
+    const end = parseInt(parts[3], 10);
+    return !isNaN(start) &amp;&amp; !isNaN(end) &amp;&amp; end &lt; start;
+  }
+
+  const rowsHtml = visibleRows.map(r =&gt; {
+    const amtFlag = isSuspiciousAmt(r);
+    const rangeFlag = isInvalidRange(r.range);
+    const formatFlag = !!r.formatIssue;
+    const anyFlag = amtFlag || rangeFlag || formatFlag;
+    const rangeWarnings = [
+      rangeFlag ? &#x27;⚠ wrong range&#x27; : &#x27;&#x27;,
+      formatFlag ? &#x27;⚠ wrong format&#x27; : &#x27;&#x27;
+    ].filter(Boolean).join(&#x27; &#x27;);
+    return `
+    &lt;tr${anyFlag ? &#x27; style=&quot;background: rgba(255,106,106,0.08);&quot;&#x27; : &#x27;&#x27;}&gt;
+      &lt;td class=&quot;seq&quot;&gt;${esc(r.seq)}&lt;/td&gt;
+      &lt;td class=&quot;${r.sign === &#x27;-&#x27; ? &#x27;sign-minus&#x27; : &#x27;sign-plus&#x27;}&quot;&gt;${r.sign}&lt;/td&gt;
+      &lt;td&gt;${esc(r.desc)}&lt;/td&gt;
+      &lt;td class=&quot;range&quot;${(rangeFlag || formatFlag) ? &#x27; style=&quot;color:var(--red); font-weight:700;&quot;&#x27; : &#x27;&#x27;}&gt;${esc(r.range)}${rangeWarnings ? &#x27; &#x27; + rangeWarnings : &#x27;&#x27;}&lt;/td&gt;
+      &lt;td class=&quot;note&quot;&gt;${esc(r.note)}&lt;/td&gt;
+      &lt;td class=&quot;num&quot;&gt;${r.qty == null ? &#x27;&#x27; : r.qty}&lt;/td&gt;
+      &lt;td class=&quot;num&quot;${amtFlag ? &#x27; style=&quot;color:var(--red); font-weight:700;&quot;&#x27; : &#x27;&#x27;}&gt;${r.amt == null ? &#x27;&#x27; : r.amt.toFixed(2)}${amtFlag ? &#x27; ⚠&#x27; : &#x27;&#x27;}&lt;/td&gt;
+      &lt;td&gt;${esc(r.fps)}&lt;/td&gt;
+      &lt;td class=&quot;tic&quot;&gt;${esc(r.tic)}&lt;/td&gt;
+    &lt;/tr&gt;
+  `;
+  }).join(&#x27;&#x27;);
+
+  output.innerHTML = `
+    ${metaHtml}
+    &lt;div class=&quot;panel&quot;&gt;
+      &lt;div class=&quot;panel-head&quot;&gt;
+        &lt;span&gt;▍ parsed items&lt;/span&gt;
+        &lt;span style=&quot;display:flex; align-items:center; gap:14px;&quot;&gt;
+          &lt;span style=&quot;display:flex; align-items:center; gap:6px;&quot;&gt;
+            &lt;select id=&quot;signFilterSelect&quot; style=&quot;background:var(--input-bg); border:1px solid var(--line); color:var(--green); font-family:var(--mono); font-size:11px; padding:4px 7px; border-radius:2px;&quot;&gt;
+              &lt;option value=&quot;&quot; ${currentSignFilter === &#x27;&#x27; ? &#x27;selected&#x27; : &#x27;&#x27;}&gt;± all&lt;/option&gt;
+              &lt;option value=&quot;+&quot; ${currentSignFilter === &#x27;+&#x27; ? &#x27;selected&#x27; : &#x27;&#x27;}&gt;+ only&lt;/option&gt;
+              &lt;option value=&quot;-&quot; ${currentSignFilter === &#x27;-&#x27; ? &#x27;selected&#x27; : &#x27;&#x27;}&gt;− only&lt;/option&gt;
+            &lt;/select&gt;
+          &lt;/span&gt;
+          &lt;span style=&quot;display:flex; align-items:center; gap:6px;&quot;&gt;
+            &lt;input type=&quot;text&quot; id=&quot;filterInput&quot; placeholder=&quot;e.g. 403&quot; value=&quot;${currentFilter}&quot;
+              style=&quot;background:var(--input-bg); border:1px solid var(--line); color:var(--amber); font-family:var(--mono); font-size:11px; padding:4px 7px; width:80px; border-radius:2px;&quot;&gt;
+            &lt;button class=&quot;reveal-btn&quot; id=&quot;filterBtn&quot;&gt;filter&lt;/button&gt;
+            ${(currentFilter || currentSignFilter) ? `&lt;button class=&quot;reveal-btn&quot; id=&quot;filterClearBtn&quot;&gt;clear&lt;/button&gt;` : &#x27;&#x27;}
+          &lt;/span&gt;
+          &lt;button class=&quot;reveal-btn&quot; id=&quot;selectAllBtn&quot;&gt;select all &amp;amp; copy&lt;/button&gt;
+          &lt;button class=&quot;reveal-btn&quot; id=&quot;copyNumbersBtn&quot;&gt;copy numbers only&lt;/button&gt;
+          &lt;span&gt;${visibleRows.length}${visibleRows.length !== parsedRows.length ? &#x27; of &#x27; + parsedRows.length : &#x27;&#x27;} row${visibleRows.length === 1 ? &#x27;&#x27; : &#x27;s&#x27;}&lt;/span&gt;
+        &lt;/span&gt;
+      &lt;/div&gt;
+      &lt;div class=&quot;table-scroll&quot;&gt;
+        &lt;table id=&quot;resultTable&quot;&gt;
+          &lt;thead&gt;
+            &lt;tr&gt;
+              &lt;th&gt;Line&lt;/th&gt;
+              &lt;th&gt;±&lt;/th&gt;
+              &lt;th&gt;Description&lt;/th&gt;
+              &lt;th&gt;Number / Range&lt;/th&gt;
+              &lt;th&gt;Note&lt;/th&gt;
+              &lt;th class=&quot;num&quot;&gt;Qty&lt;/th&gt;
+              &lt;th class=&quot;num&quot;&gt;Amt&lt;/th&gt;
+              &lt;th&gt;FPS&lt;/th&gt;
+              &lt;th&gt;TIC&lt;/th&gt;
+            &lt;/tr&gt;
+          &lt;/thead&gt;
+          &lt;tbody&gt;${rowsHtml}&lt;/tbody&gt;
+          &lt;tfoot&gt;
+            &lt;tr&gt;
+              &lt;td colspan=&quot;5&quot;&gt;TOTAL&lt;/td&gt;
+              &lt;td class=&quot;num&quot;&gt;${totalQty}&lt;/td&gt;
+              &lt;td class=&quot;num&quot;&gt;${totalAmt.toFixed(2)}&lt;/td&gt;
+              &lt;td colspan=&quot;2&quot;&gt;&lt;/td&gt;
+            &lt;/tr&gt;
+          &lt;/tfoot&gt;
+        &lt;/table&gt;
+      &lt;/div&gt;
+    &lt;/div&gt;
+    ${(stillRemoved.length || newlyAddedOutside.length || returnedByLine.length) ? `
+    &lt;div class=&quot;panel&quot;&gt;
+      &lt;div class=&quot;panel-head&quot;&gt;
+        &lt;span&gt;▍ number movement&lt;/span&gt;
+        &lt;span&gt;${stillRemoved.length} not returned · ${newlyAddedOutside.length} outside range · ${returnedByLine.reduce((a,g)=&gt;a+g.returned.length,0)} removed &amp;amp; returned&lt;/span&gt;
+      &lt;/div&gt;
+      &lt;div style=&quot;padding: 14px;&quot;&gt;
+        ${stillRemoved.length ? `
+        &lt;div style=&quot;margin-bottom: ${(newlyAddedOutside.length || returnedByLine.length) ? &#x27;18px&#x27; : &#x27;0&#x27;};&quot;&gt;
+          &lt;div style=&quot;display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;&quot;&gt;
+            &lt;div style=&quot;font-size:11px; letter-spacing:1.5px; text-transform:uppercase; color:var(--red);&quot;&gt;
+              ▍ Removed &amp;amp; Not Returned (${stillRemoved.length})
+            &lt;/div&gt;
+            &lt;button class=&quot;reveal-btn&quot; id=&quot;copyStillRemovedBtn&quot;&gt;copy list&lt;/button&gt;
+          &lt;/div&gt;
+          ${stillRemovedByLine.map(g =&gt; `
+            &lt;div style=&quot;margin-bottom:12px;&quot;&gt;
+              &lt;div style=&quot;font-size:11px; color:var(--text-dim); margin-bottom:6px;&quot;&gt;
+                Line &lt;span style=&quot;color:var(--amber);&quot;&gt;${esc(g.seq)}&lt;/span&gt; — range &lt;span style=&quot;color:var(--text);&quot;&gt;${esc(g.range)}&lt;/span&gt;${g.desc ? ` — ${esc(g.desc)}` : &#x27;&#x27;}
+              &lt;/div&gt;
+              &lt;div style=&quot;display:grid; grid-template-columns: repeat(auto-fill, minmax(150px,1fr)); gap:6px;&quot;&gt;
+                ${g.missing.map(n =&gt; `
+                  &lt;div style=&quot;background:var(--red-tint-bg); border:1px solid var(--red-tint-border); border-radius:2px; padding:6px 10px; font-size:12.5px; color:var(--red);&quot;&gt;${esc(n)}&lt;/div&gt;
+                `).join(&#x27;&#x27;)}
+              &lt;/div&gt;
+            &lt;/div&gt;
+          `).join(&#x27;&#x27;)}
+        &lt;/div&gt;` : &#x27;&#x27;}
+        ${newlyAddedOutside.length ? `
+        &lt;div style=&quot;margin-bottom: ${returnedByLine.length ? &#x27;18px&#x27; : &#x27;0&#x27;};&quot;&gt;
+          &lt;div style=&quot;display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;&quot;&gt;
+            &lt;div style=&quot;font-size:11px; letter-spacing:1.5px; text-transform:uppercase; color:var(--green);&quot;&gt;
+              ▍ Added Outside Removed Range — verify (${newlyAddedOutside.length})
+            &lt;/div&gt;
+            &lt;button class=&quot;reveal-btn&quot; id=&quot;copyNewlyAddedBtn&quot;&gt;copy list&lt;/button&gt;
+          &lt;/div&gt;
+          &lt;div style=&quot;display:grid; grid-template-columns: repeat(auto-fill, minmax(150px,1fr)); gap:6px;&quot;&gt;
+            ${newlyAddedOutside.map(n =&gt; `
+              &lt;div style=&quot;background:var(--green-tint-bg); border:1px solid var(--green-tint-border); border-radius:2px; padding:6px 10px; font-size:12.5px; color:var(--green);&quot;&gt;${esc(n)}&lt;/div&gt;
+            `).join(&#x27;&#x27;)}
+          &lt;/div&gt;
+        &lt;/div&gt;` : &#x27;&#x27;}
+        ${returnedByLine.length ? `
+        &lt;div&gt;
+          &lt;div style=&quot;display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;&quot;&gt;
+            &lt;div style=&quot;font-size:11px; letter-spacing:1.5px; text-transform:uppercase; color:var(--text-dim);&quot;&gt;
+              ▍ Removed &amp;amp; Returned — informational (${returnedByLine.reduce((a,g)=&gt;a+g.returned.length,0)})
+            &lt;/div&gt;
+            &lt;button class=&quot;reveal-btn&quot; id=&quot;copyReturnedBtn&quot;&gt;copy list&lt;/button&gt;
+          &lt;/div&gt;
+          &lt;div style=&quot;font-size:11px; color:var(--text-dim); margin-bottom:10px;&quot;&gt;
+            These were removed and then added back somewhere else on this same INQ — net no change, shown for visibility only.
+          &lt;/div&gt;
+          ${returnedByLine.map(g =&gt; `
+            &lt;div style=&quot;margin-bottom:12px;&quot;&gt;
+              &lt;div style=&quot;font-size:11px; color:var(--text-dim); margin-bottom:6px;&quot;&gt;
+                Line &lt;span style=&quot;color:var(--amber);&quot;&gt;${esc(g.seq)}&lt;/span&gt; — range &lt;span style=&quot;color:var(--text);&quot;&gt;${esc(g.range)}&lt;/span&gt;${g.desc ? ` — ${esc(g.desc)}` : &#x27;&#x27;}
+              &lt;/div&gt;
+              &lt;div style=&quot;display:grid; grid-template-columns: repeat(auto-fill, minmax(150px,1fr)); gap:6px;&quot;&gt;
+                ${g.returned.map(n =&gt; `
+                  &lt;div style=&quot;background:var(--neutral-tint-bg); border:1px solid var(--line); border-radius:2px; padding:6px 10px; font-size:12.5px; color:var(--text-dim);&quot;&gt;${esc(n)}&lt;/div&gt;
+                `).join(&#x27;&#x27;)}
+              &lt;/div&gt;
+            &lt;/div&gt;
+          `).join(&#x27;&#x27;)}
+        &lt;/div&gt;` : &#x27;&#x27;}
+      &lt;/div&gt;
+    &lt;/div&gt;` : &#x27;&#x27;}
+    ${(duplicateAdded.length || duplicateRemoved.length) ? `
+    &lt;div class=&quot;panel&quot;&gt;
+      &lt;div class=&quot;panel-head&quot;&gt;
+        &lt;span&gt;▍ duplicate lines&lt;/span&gt;
+        &lt;span&gt;${duplicateAdded.length} added twice · ${duplicateRemoved.length} removed twice&lt;/span&gt;
+      &lt;/div&gt;
+      &lt;div style=&quot;padding: 14px;&quot;&gt;
+        ${duplicateAdded.length ? `
+        &lt;div style=&quot;margin-bottom: ${duplicateRemoved.length ? &#x27;18px&#x27; : &#x27;0&#x27;};&quot;&gt;
+          &lt;div style=&quot;display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;&quot;&gt;
+            &lt;div style=&quot;font-size:11px; letter-spacing:1.5px; text-transform:uppercase; color:var(--amber);&quot;&gt;
+              ▍ Same number appears in multiple &quot;+&quot; rows (${duplicateAdded.length})
+            &lt;/div&gt;
+            &lt;button class=&quot;reveal-btn&quot; id=&quot;copyDuplicatesAddedBtn&quot;&gt;copy list&lt;/button&gt;
+          &lt;/div&gt;
+          &lt;div class=&quot;table-scroll&quot; style=&quot;max-height:280px;&quot;&gt;
+            &lt;table&gt;
+              &lt;thead&gt;
+                &lt;tr&gt;&lt;th&gt;Number&lt;/th&gt;&lt;th&gt;Appears In (Line)&lt;/th&gt;&lt;/tr&gt;
+              &lt;/thead&gt;
+              &lt;tbody&gt;
+                ${duplicateAdded.map(d =&gt; `
+                  &lt;tr&gt;
+                    &lt;td class=&quot;range&quot; style=&quot;color:var(--amber);&quot;&gt;${esc(d.number)}&lt;/td&gt;
+                    &lt;td&gt;${d.seqs.map(s =&gt; esc(s)).join(&#x27;, &#x27;)}&lt;/td&gt;
+                  &lt;/tr&gt;
+                `).join(&#x27;&#x27;)}
+              &lt;/tbody&gt;
+            &lt;/table&gt;
+          &lt;/div&gt;
+        &lt;/div&gt;` : &#x27;&#x27;}
+        ${duplicateRemoved.length ? `
+        &lt;div&gt;
+          &lt;div style=&quot;display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;&quot;&gt;
+            &lt;div style=&quot;font-size:11px; letter-spacing:1.5px; text-transform:uppercase; color:var(--red);&quot;&gt;
+              ▍ Same number appears in multiple &quot;-&quot; rows (${duplicateRemoved.length})
+            &lt;/div&gt;
+            &lt;button class=&quot;reveal-btn&quot; id=&quot;copyDuplicatesRemovedBtn&quot;&gt;copy list&lt;/button&gt;
+          &lt;/div&gt;
+          &lt;div class=&quot;table-scroll&quot; style=&quot;max-height:280px;&quot;&gt;
+            &lt;table&gt;
+              &lt;thead&gt;
+                &lt;tr&gt;&lt;th&gt;Number&lt;/th&gt;&lt;th&gt;Appears In (Line)&lt;/th&gt;&lt;/tr&gt;
+              &lt;/thead&gt;
+              &lt;tbody&gt;
+                ${duplicateRemoved.map(d =&gt; `
+                  &lt;tr&gt;
+                    &lt;td class=&quot;range&quot; style=&quot;color:var(--red);&quot;&gt;${esc(d.number)}&lt;/td&gt;
+                    &lt;td&gt;${d.seqs.map(s =&gt; esc(s)).join(&#x27;, &#x27;)}&lt;/td&gt;
+                  &lt;/tr&gt;
+                `).join(&#x27;&#x27;)}
+              &lt;/tbody&gt;
+            &lt;/table&gt;
+          &lt;/div&gt;
+        &lt;/div&gt;` : &#x27;&#x27;}
+      &lt;/div&gt;
+    &lt;/div&gt;` : &#x27;&#x27;}
+  `;
+
+  copyBtn.disabled = false;
+  csvBtn.disabled = false;
+  previewOnlyBtn.disabled = false;
+
+  const filterBtn = document.getElementById(&#x27;filterBtn&#x27;);
+  const filterInput = document.getElementById(&#x27;filterInput&#x27;);
+  const filterClearBtn = document.getElementById(&#x27;filterClearBtn&#x27;);
+  const signFilterSelect = document.getElementById(&#x27;signFilterSelect&#x27;);
+  if (filterBtn){
+    filterBtn.addEventListener(&#x27;click&#x27;, () =&gt; {
+      currentFilter = filterInput.value.trim();
+      render();
+    });
+    filterInput.addEventListener(&#x27;keydown&#x27;, (e) =&gt; {
+      if (e.key === &#x27;Enter&#x27;){ currentFilter = filterInput.value.trim(); render(); }
+    });
+  }
+  if (signFilterSelect){
+    signFilterSelect.addEventListener(&#x27;change&#x27;, () =&gt; {
+      currentSignFilter = signFilterSelect.value;
+      render();
+    });
+  }
+  if (filterClearBtn){
+    filterClearBtn.addEventListener(&#x27;click&#x27;, () =&gt; {
+      currentFilter = &#x27;&#x27;;
+      currentSignFilter = &#x27;&#x27;;
+      render();
+    });
+  }
+
+  const selectAllBtn = document.getElementById(&#x27;selectAllBtn&#x27;);
+  if (selectAllBtn){
+    selectAllBtn.addEventListener(&#x27;click&#x27;, () =&gt; {
+      const table = document.getElementById(&#x27;resultTable&#x27;);
+      const range = document.createRange();
+      range.selectNodeContents(table);
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+
+      copyTextToClipboard(toDelimited(&#x27;\t&#x27;, visibleRows), &#x27;All rows selected &amp; copied&#x27;);
+    });
+  }
+
+  const copyNumbersBtn = document.getElementById(&#x27;copyNumbersBtn&#x27;);
+  if (copyNumbersBtn){
+    copyNumbersBtn.addEventListener(&#x27;click&#x27;, () =&gt; {
+      const numbers = visibleRows
+        .map(r =&gt; r.range)
+        .filter(Boolean)
+        .join(&#x27;\n&#x27;);
+      if (!numbers){
+        showToast(&#x27;No numbers to copy&#x27;);
+        return;
+      }
+      copyTextToClipboard(numbers, &#x27;Numbers copied&#x27;);
+    });
+  }
+  const copyStillRemovedBtn = document.getElementById(&#x27;copyStillRemovedBtn&#x27;);
+  if (copyStillRemovedBtn){
+    copyStillRemovedBtn.addEventListener(&#x27;click&#x27;, () =&gt; {
+      const ordered = lastStillRemovedByLine.flatMap(g =&gt; g.missing);
+      copyTextToClipboard(ordered.join(&#x27;\n&#x27;), &#x27;Copied not-returned list&#x27;);
+    });
+  }
+  const copyNewlyAddedBtn = document.getElementById(&#x27;copyNewlyAddedBtn&#x27;);
+  if (copyNewlyAddedBtn){
+    copyNewlyAddedBtn.addEventListener(&#x27;click&#x27;, () =&gt; {
+      copyTextToClipboard(newlyAddedOutside.join(&#x27;\n&#x27;), &#x27;Copied outside-range list&#x27;);
+    });
+  }
+  const copyReturnedBtn = document.getElementById(&#x27;copyReturnedBtn&#x27;);
+  if (copyReturnedBtn){
+    copyReturnedBtn.addEventListener(&#x27;click&#x27;, () =&gt; {
+      const ordered = lastReturnedByLine.flatMap(g =&gt; g.returned);
+      copyTextToClipboard(ordered.join(&#x27;\n&#x27;), &#x27;Copied removed &amp; returned list&#x27;);
+    });
+  }
+  const copyDuplicatesAddedBtn = document.getElementById(&#x27;copyDuplicatesAddedBtn&#x27;);
+  if (copyDuplicatesAddedBtn){
+    copyDuplicatesAddedBtn.addEventListener(&#x27;click&#x27;, () =&gt; {
+      const text = duplicateAdded.map(d =&gt; `${d.number}\t${d.seqs.join(&#x27;, &#x27;)}`).join(&#x27;\n&#x27;);
+      copyTextToClipboard(text, &#x27;Copied duplicate additions list&#x27;);
+    });
+  }
+  const copyDuplicatesRemovedBtn = document.getElementById(&#x27;copyDuplicatesRemovedBtn&#x27;);
+  if (copyDuplicatesRemovedBtn){
+    copyDuplicatesRemovedBtn.addEventListener(&#x27;click&#x27;, () =&gt; {
+      const text = duplicateRemoved.map(d =&gt; `${d.number}\t${d.seqs.join(&#x27;, &#x27;)}`).join(&#x27;\n&#x27;);
+      copyTextToClipboard(text, &#x27;Copied duplicate removals list&#x27;);
+    });
+  }
+}
+
+function copyTextToClipboard(text, successMsg){
+  if (navigator.clipboard &amp;&amp; navigator.clipboard.writeText){
+    navigator.clipboard.writeText(text)
+      .then(() =&gt; showToast(successMsg))
+      .catch(() =&gt; fallbackCopy(text, successMsg));
+  } else {
+    fallbackCopy(text, successMsg);
+  }
+}
+
+function fallbackCopy(text, successMsg){
+  const ta = document.createElement(&#x27;textarea&#x27;);
+  ta.value = text;
+  ta.style.position = &#x27;fixed&#x27;;
+  ta.style.left = &#x27;-9999px&#x27;;
+  ta.style.top = &#x27;0&#x27;;
+  document.body.appendChild(ta);
+  ta.focus();
+  ta.select();
+  try {
+    const ok = document.execCommand(&#x27;copy&#x27;);
+    showToast(ok ? successMsg : &#x27;Copy failed — select manually&#x27;);
+  } catch (e) {
+    showToast(&#x27;Copy failed — select manually&#x27;);
+  }
+  document.body.removeChild(ta);
+}
+
+function toDelimited(delim, rows){
+  rows = rows || parsedRows;
+  const headers = [&#x27;Line&#x27;,&#x27;Sign&#x27;,&#x27;Description&#x27;,&#x27;Number/Range&#x27;,&#x27;Note&#x27;,&#x27;Qty&#x27;,&#x27;Amt&#x27;,&#x27;FPS&#x27;,&#x27;TIC&#x27;];
+  const lines = [headers.join(delim)];
+  for (const r of rows){
+    const cells = [r.seq, r.sign, r.desc, r.range, r.note, r.qty == null ? &#x27;&#x27; : r.qty, r.amt == null ? &#x27;&#x27; : r.amt.toFixed(2), r.fps, r.tic];
+    lines.push(cells.map(c =&gt; {
+      c = String(c ?? &#x27;&#x27;);
+      if (delim === &#x27;,&#x27; &amp;&amp; (c.includes(&#x27;,&#x27;) || c.includes(&#x27;&quot;&#x27;))){
+        c = &#x27;&quot;&#x27; + c.replace(/&quot;/g,&#x27;&quot;&quot;&#x27;) + &#x27;&quot;&#x27;;
+      }
+      return c;
+    }).join(delim));
+  }
+  return lines.join(&#x27;\n&#x27;);
+}
+
+copyBtn.addEventListener(&#x27;click&#x27;, () =&gt; {
+  copyTextToClipboard(toDelimited(&#x27;\t&#x27;, visibleRowsGlobal), &#x27;Copied as TSV&#x27;);
+});
+csvBtn.addEventListener(&#x27;click&#x27;, () =&gt; {
+  copyTextToClipboard(toDelimited(&#x27;,&#x27;, visibleRowsGlobal), &#x27;Copied as CSV&#x27;);
+});
+
+function digitsOf(s){ return (s || &#x27;&#x27;).replace(/\D/g, &#x27;&#x27;); }
+
+function runSearch(){
+  const searchResults = document.getElementById(&#x27;searchResults&#x27;);
+  const query = document.getElementById(&#x27;searchInput&#x27;).value.trim();
+  const qDigits = digitsOf(query);
+
+  if (!qDigits){
+    searchResults.innerHTML = `&lt;div class=&quot;empty&quot; style=&quot;padding:14px 0 4px;&quot;&gt;Enter a number (full or partial) to search.&lt;/div&gt;`;
+    return;
+  }
+  if (!parsedRows.length){
+    searchResults.innerHTML = `&lt;div class=&quot;empty&quot; style=&quot;padding:14px 0 4px;&quot;&gt;Analyze some data first.&lt;/div&gt;`;
+    return;
+  }
+
+  const matches = [];
+  for (const r of parsedRows){
+    if (!r.range) continue;
+    const parts = r.range.split(&#x27;-&#x27;);
+    if (parts.length === 4){
+      const expanded = expandRange(r.range);
+      const hit = expanded.find(n =&gt; digitsOf(n).includes(qDigits));
+      if (hit) matches.push({ row: r, matchedNumber: hit });
+    } else if (digitsOf(r.range).includes(qDigits)){
+      matches.push({ row: r, matchedNumber: r.range });
+    }
+  }
+
+  if (!matches.length){
+    searchResults.innerHTML = `&lt;div class=&quot;empty&quot; style=&quot;padding:14px 0 4px;&quot;&gt;No match found for &quot;${esc(query)}&quot;.&lt;/div&gt;`;
+    return;
+  }
+
+  const rowsHtml = matches.map(({ row: r, matchedNumber }) =&gt; {
+    let badge = &#x27;&#x27;;
+    if (lastStillRemoved.includes(matchedNumber)){
+      badge = `&lt;span style=&quot;color:var(--red); border:1px solid var(--red-tint-border); background:var(--red-tint-bg); padding:2px 7px; border-radius:2px; font-size:10.5px; letter-spacing:1px; text-transform:uppercase;&quot;&gt;Not Returned&lt;/span&gt;`;
+    } else if (lastNewlyAddedOutside.includes(matchedNumber)){
+      badge = `&lt;span style=&quot;color:var(--green); border:1px solid var(--green-tint-border); background:var(--green-tint-bg); padding:2px 7px; border-radius:2px; font-size:10.5px; letter-spacing:1px; text-transform:uppercase;&quot;&gt;Added — Verify&lt;/span&gt;`;
+    } else if (lastRemovedSet.has(matchedNumber) &amp;&amp; lastAddedSet.has(matchedNumber)){
+      badge = `&lt;span style=&quot;color:var(--text-dim); border:1px solid var(--line); background:var(--neutral-tint-bg); padding:2px 7px; border-radius:2px; font-size:10.5px; letter-spacing:1px; text-transform:uppercase;&quot;&gt;Removed &amp;amp; Returned&lt;/span&gt;`;
+    }
+    return `
+      &lt;tr&gt;
+        &lt;td class=&quot;seq&quot;&gt;${esc(r.seq)}&lt;/td&gt;
+        &lt;td class=&quot;${r.sign === &#x27;-&#x27; ? &#x27;sign-minus&#x27; : &#x27;sign-plus&#x27;}&quot;&gt;${r.sign}&lt;/td&gt;
+        &lt;td&gt;${esc(r.desc)}&lt;/td&gt;
+        &lt;td class=&quot;range&quot;&gt;${esc(matchedNumber)}${matchedNumber !== r.range ? ` &lt;span style=&quot;color:var(--text-dim); font-size:11px;&quot;&gt;(in ${esc(r.range)})&lt;/span&gt;` : &#x27;&#x27;}&lt;/td&gt;
+        &lt;td class=&quot;note&quot;&gt;${esc(r.note)}&lt;/td&gt;
+        &lt;td class=&quot;num&quot;&gt;${r.qty == null ? &#x27;&#x27; : r.qty}&lt;/td&gt;
+        &lt;td class=&quot;num&quot;&gt;${r.amt == null ? &#x27;&#x27; : r.amt.toFixed(2)}&lt;/td&gt;
+        &lt;td&gt;${esc(r.fps)}&lt;/td&gt;
+        &lt;td class=&quot;tic&quot;&gt;${esc(r.tic)}&lt;/td&gt;
+        &lt;td&gt;${badge}&lt;/td&gt;
+      &lt;/tr&gt;
+    `;
+  }).join(&#x27;&#x27;);
+
+  searchResults.innerHTML = `
+    &lt;div style=&quot;font-size:11px; color:var(--text-dim); letter-spacing:1px; text-transform:uppercase; margin-bottom:8px;&quot;&gt;
+      ${matches.length} match${matches.length === 1 ? &#x27;&#x27; : &#x27;es&#x27;} for &quot;${esc(query)}&quot;
+    &lt;/div&gt;
+    &lt;div class=&quot;table-scroll&quot; style=&quot;max-height:320px;&quot;&gt;
+      &lt;table&gt;
+        &lt;thead&gt;
+          &lt;tr&gt;
+            &lt;th&gt;Line&lt;/th&gt;&lt;th&gt;±&lt;/th&gt;&lt;th&gt;Description&lt;/th&gt;&lt;th&gt;Number / Range&lt;/th&gt;&lt;th&gt;Note&lt;/th&gt;
+            &lt;th class=&quot;num&quot;&gt;Qty&lt;/th&gt;&lt;th class=&quot;num&quot;&gt;Amt&lt;/th&gt;&lt;th&gt;FPS&lt;/th&gt;&lt;th&gt;TIC&lt;/th&gt;&lt;th&gt;Status&lt;/th&gt;
+          &lt;/tr&gt;
+        &lt;/thead&gt;
+        &lt;tbody&gt;${rowsHtml}&lt;/tbody&gt;
+      &lt;/table&gt;
+    &lt;/div&gt;
+  `;
+}
+
+document.getElementById(&#x27;searchBtn&#x27;).addEventListener(&#x27;click&#x27;, runSearch);
+document.getElementById(&#x27;searchInput&#x27;).addEventListener(&#x27;keydown&#x27;, (e) =&gt; {
+  if (e.key === &#x27;Enter&#x27;) runSearch();
+});
+document.getElementById(&#x27;searchClearBtn&#x27;).addEventListener(&#x27;click&#x27;, () =&gt; {
+  document.getElementById(&#x27;searchInput&#x27;).value = &#x27;&#x27;;
+  document.getElementById(&#x27;searchResults&#x27;).innerHTML = &#x27;&#x27;;
+});
+
+&lt;/script&gt;
+
+&lt;script&gt;
+window.addEventListener(&#x27;message&#x27;, function(e){
+  if (e &amp;&amp; e.data &amp;&amp; e.data.type === &#x27;ops-theme&#x27;){
+    document.documentElement.setAttribute(&#x27;data-theme&#x27;, e.data.mode === &#x27;light&#x27; ? &#x27;light&#x27; : &#x27;&#x27;);
+  }
+});
+&lt;/script&gt;
+&lt;/body&gt;
+&lt;/html&gt;
+"></iframe>
+      <iframe class="toolframe" id="frame-up" srcdoc="&lt;!DOCTYPE html&gt;
+&lt;html lang=&quot;en&quot;&gt;
+&lt;head&gt;
+&lt;meta charset=&quot;UTF-8&quot;&gt;
+&lt;title&gt;Paste → Sheet&lt;/title&gt;
+&lt;script src=&quot;https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js&quot;&gt;&lt;/script&gt;
+&lt;style&gt;
+  :root{
+    --ink:#d8e4dc;
+    --paper:#0b0f0c;
+    --line:#1e2b22;
+    --grid:#16201a;
+    --accent:#5fd97a;
+    --accent-ink:#06110a;
+    --muted:#7c9186;
+    --amber:#ffb454;
+    --red:#ff6a6a;
+    --panel-bg:#0f1512;
+    --th-bg:#0a1310;
+    --btn-disabled-bg:#1e2b22;
+    --mono: &#x27;IBM Plex Mono&#x27;, &quot;JetBrains Mono&quot;, Consolas, monospace;
+    --sans: &#x27;IBM Plex Mono&#x27;, &quot;JetBrains Mono&quot;, Consolas, monospace;
+  }
+  :root[data-theme=&quot;light&quot;]{
+    --ink:#1b1f23;
+    --paper:#f4f3ee;
+    --line:#d9d5c9;
+    --grid:#ece9df;
+    --accent:#1f8a4c;
+    --accent-ink:#ffffff;
+    --muted:#6b6f68;
+    --amber:#b5730a;
+    --red:#c0392b;
+    --panel-bg:#ffffff;
+    --th-bg:#ece9df;
+    --btn-disabled-bg:#d9d5c9;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    font-family:var(--sans);
+    background:var(--paper);
+    background-image: radial-gradient(circle at 50% 0%, rgba(95,217,122,0.05), transparent 60%);
+    color:var(--ink);
+    min-height:100vh;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    padding:32px 16px 60px;
+    position:relative;
+  }
+  body::before{
+    content:&quot;&quot;;
+    pointer-events:none;
+    position:fixed;
+    inset:0;
+    background: repeating-linear-gradient(
+      to bottom,
+      rgba(255,255,255,0.015) 0px,
+      rgba(255,255,255,0.015) 1px,
+      transparent 1px,
+      transparent 3px
+    );
+    z-index:50;
+  }
+  .wrap{ width:100%; max-width:920px; }
+  header{ margin-bottom:22px; }
+  .eyebrow{
+    font-family:var(--mono);
+    font-size:11px;
+    letter-spacing:.14em;
+    text-transform:uppercase;
+    color:var(--accent);
+    margin:0 0 6px;
+    text-shadow:0 0 6px rgba(95,217,122,.35);
+  }
+  h1{
+    font-size:22px;
+    margin:0 0 6px;
+    letter-spacing:.02em;
+    text-transform:uppercase;
+    color:var(--accent);
+  }
+  p.sub{
+    margin:0;
+    color:var(--muted);
+    font-size:13px;
+    line-height:1.5;
+    max-width:64ch;
+  }
+  .panel{
+    background:var(--panel-bg);
+    border:1px solid var(--line);
+    border-radius:3px;
+    padding:18px;
+    margin-top:20px;
+  }
+  label.field-label{
+    display:block;
+    font-size:11px;
+    font-family:var(--mono);
+    letter-spacing:.08em;
+    text-transform:uppercase;
+    color:var(--muted);
+    margin-bottom:8px;
+  }
+  textarea{
+    width:100%;
+    min-height:180px;
+    resize:vertical;
+    font-family:var(--mono);
+    font-size:13px;
+    line-height:1.5;
+    padding:12px;
+    border:1px solid var(--line);
+    border-radius:8px;
+    background:var(--paper);
+    color:var(--ink);
+  }
+  textarea:focus{ outline:2px solid var(--accent); outline-offset:1px; }
+  .row{
+    display:flex;
+    gap:12px;
+    align-items:center;
+    flex-wrap:wrap;
+    margin-top:12px;
+  }
+  .checkbox-line{
+    display:flex;
+    align-items:center;
+    gap:6px;
+    font-size:13px;
+    color:var(--muted);
+  }
+  .status{
+    font-family:var(--mono);
+    font-size:12px;
+    color:var(--muted);
+    margin-left:auto;
+  }
+  .preview-head{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:10px;
+    gap:12px;
+    flex-wrap:wrap;
+  }
+  .preview-head h2{
+    font-size:13px;
+    font-family:var(--mono);
+    letter-spacing:.08em;
+    text-transform:uppercase;
+    color:var(--muted);
+    margin:0;
+    font-weight:600;
+  }
+  .filter-line{
+    display:flex;
+    align-items:center;
+    gap:8px;
+  }
+  .filter-line label{
+    font-size:11px;
+    font-family:var(--mono);
+    letter-spacing:.06em;
+    text-transform:uppercase;
+    color:var(--muted);
+    white-space:nowrap;
+  }
+  select#statusFilter{
+    font-family:var(--mono);
+    font-size:12.5px;
+    color:var(--ink);
+    background:var(--paper);
+    border:1px solid var(--line);
+    border-radius:6px;
+    padding:6px 10px;
+    cursor:pointer;
+  }
+  select#statusFilter:disabled{
+    opacity:.5;
+    cursor:not-allowed;
+  }
+  select#statusFilter:focus{ outline:2px solid var(--accent); outline-offset:1px; }
+  .table-scroll{
+    overflow:auto;
+    border:1px solid var(--grid);
+    border-radius:8px;
+    max-height:400px;
+  }
+  table{
+    border-collapse:collapse;
+    width:100%;
+    font-size:13px;
+  }
+  th,td{
+    border:1px solid var(--grid);
+    padding:6px 10px;
+    text-align:left;
+    white-space:nowrap;
+  }
+  th{
+    background:var(--th-bg);
+    font-family:var(--mono);
+    font-size:11px;
+    color:var(--muted);
+    position:sticky;
+    top:0;
+  }
+  tr:nth-child(even) td{ background:rgba(255,255,255,0.02); }
+  td:empty::after{ content:&quot;—&quot;; color:var(--muted); }
+  .empty-state{
+    color:var(--muted);
+    font-size:13px;
+    padding:30px 10px;
+    text-align:center;
+  }
+  .actions{
+    display:flex;
+    gap:10px;
+    margin-top:18px;
+    flex-wrap:wrap;
+  }
+  button.primary{
+    background:var(--accent);
+    color:var(--accent-ink);
+    border:none;
+    padding:11px 18px;
+    border-radius:7px;
+    font-size:14px;
+    font-weight:600;
+    cursor:pointer;
+  }
+  button.primary:disabled{
+    background:var(--btn-disabled-bg);
+    color:var(--muted);
+    cursor:not-allowed;
+  }
+  button.ghost{
+    background:transparent;
+    border:1px solid var(--line);
+    color:var(--ink);
+    padding:11px 16px;
+    border-radius:7px;
+    font-size:14px;
+    cursor:pointer;
+  }
+  .hint{
+    font-size:12px;
+    color:var(--muted);
+    margin-top:14px;
+    line-height:1.5;
+  }
+  .hint code{
+    background:var(--grid);
+    padding:1px 5px;
+    border-radius:4px;
+    font-family:var(--mono);
+  }
+&lt;/style&gt;
+&lt;/head&gt;
+&lt;body&gt;
+&lt;div class=&quot;wrap&quot;&gt;
+  &lt;header&gt;
+    &lt;p class=&quot;eyebrow&quot;&gt;Paste → Spreadsheet&lt;/p&gt;
+    &lt;h1&gt;Turn pasted records into a Sheets file&lt;/h1&gt;
+    &lt;p class=&quot;sub&quot;&gt;Paste your rows — each line one record, fields separated by tabs (copied straight from a table/report) or commas. Columns are fixed as BAN, Parent, Org date, Out date, Status; blank fields are left empty.&lt;/p&gt;
+  &lt;/header&gt;
+
+  &lt;div class=&quot;panel&quot;&gt;
+    &lt;label class=&quot;field-label&quot; for=&quot;input&quot;&gt;Paste your data&lt;/label&gt;
+    &lt;textarea id=&quot;input&quot; placeholder=&quot;Example (columns aligned with spaces, header included):&amp;#10;BAN            Parent              Org date   Out date   Status&amp;#10;5198850682                          26/08/06              ACTIVE&amp;#10;5199151319     CBNCCALOCVOIPON     26/07/13              ACTIVE&amp;#10;5199489923                          25/01/02   25/09/08   OUTED&quot;&gt;&lt;/textarea&gt;
+
+    &lt;div class=&quot;row&quot;&gt;
+      &lt;span class=&quot;status&quot; id=&quot;status&quot;&gt;Nothing pasted yet&lt;/span&gt;
+    &lt;/div&gt;
+  &lt;/div&gt;
+
+  &lt;div class=&quot;panel&quot;&gt;
+    &lt;div class=&quot;preview-head&quot;&gt;
+      &lt;h2&gt;Preview&lt;/h2&gt;
+      &lt;div class=&quot;filter-line&quot;&gt;
+        &lt;label for=&quot;statusFilter&quot;&gt;Status&lt;/label&gt;
+        &lt;select id=&quot;statusFilter&quot; disabled&gt;
+          &lt;option value=&quot;ALL&quot;&gt;All statuses&lt;/option&gt;
+        &lt;/select&gt;
+      &lt;/div&gt;
+    &lt;/div&gt;
+    &lt;div class=&quot;table-scroll&quot; id=&quot;tableScroll&quot;&gt;
+      &lt;div class=&quot;empty-state&quot;&gt;Your table will appear here as you paste.&lt;/div&gt;
+    &lt;/div&gt;
+
+    &lt;div class=&quot;actions&quot;&gt;
+      &lt;button class=&quot;primary&quot; id=&quot;downloadXlsx&quot; disabled&gt;Download .xlsx&lt;/button&gt;
+      &lt;button class=&quot;ghost&quot; id=&quot;downloadCsv&quot; disabled&gt;Download .csv&lt;/button&gt;
+      &lt;button class=&quot;ghost&quot; id=&quot;copyBtn&quot; disabled&gt;Copy for pasting into Sheets&lt;/button&gt;
+      &lt;button class=&quot;ghost&quot; id=&quot;selectAllBtn&quot; disabled&gt;Select all&lt;/button&gt;
+    &lt;/div&gt;
+
+    &lt;p class=&quot;hint&quot;&gt;
+      Columns: &lt;code&gt;BAN&lt;/code&gt;, &lt;code&gt;Parent&lt;/code&gt;, &lt;code&gt;Org date&lt;/code&gt;, &lt;code&gt;Out date&lt;/code&gt;, &lt;code&gt;Status&lt;/code&gt;.
+      Fields are identified by what they look like, not their position: the first value on a line is BAN,
+      any value shaped like &lt;code&gt;YY/MM/DD&lt;/code&gt; is a date (first one found is Org date, second is Out date),
+      the last value on the line is Status, and anything else in between is Parent. Blank fields are simply
+      left blank — no placeholder needed in what you paste.&lt;br&gt;&lt;br&gt;
+      To get it into Google Sheets: download the &lt;code&gt;.xlsx&lt;/code&gt;, then in Google Sheets choose
+      &lt;code&gt;File → Import → Upload&lt;/code&gt; — or drag the file into
+      &lt;a href=&quot;https://sheets.google.com&quot; target=&quot;_blank&quot; rel=&quot;noopener&quot;&gt;sheets.google.com&lt;/a&gt; to open it directly.
+      Or hit &quot;Copy&quot; and paste straight into an open sheet.&lt;br&gt;&lt;br&gt;
+      Use the &lt;strong&gt;Status&lt;/strong&gt; dropdown above the preview to show only one status at a time (e.g. just
+      &lt;code&gt;ACTIVE&lt;/code&gt; or just &lt;code&gt;OUTED&lt;/code&gt;) — downloads, copy, and select-all all follow whatever is
+      currently shown.
+    &lt;/p&gt;
+  &lt;/div&gt;
+&lt;/div&gt;
+
+&lt;script&gt;
+  const inputEl = document.getElementById(&#x27;input&#x27;);
+  const statusEl = document.getElementById(&#x27;status&#x27;);
+  const tableScroll = document.getElementById(&#x27;tableScroll&#x27;);
+  const downloadXlsxBtn = document.getElementById(&#x27;downloadXlsx&#x27;);
+  const downloadCsvBtn = document.getElementById(&#x27;downloadCsv&#x27;);
+  const copyBtn = document.getElementById(&#x27;copyBtn&#x27;);
+  const selectAllBtn = document.getElementById(&#x27;selectAllBtn&#x27;);
+  const statusFilterEl = document.getElementById(&#x27;statusFilter&#x27;);
+
+  const FIELDS = [&#x27;BAN&#x27;, &#x27;Parent&#x27;, &#x27;Org date&#x27;, &#x27;Out date&#x27;, &#x27;Status&#x27;];
+  let allBodyRows = [];   // every parsed data row (unfiltered), each an array matching FIELDS
+  let currentRows = [];   // header + rows currently shown/exported (after status filter)
+
+  inputEl.addEventListener(&#x27;input&#x27;, render);
+  statusFilterEl.addEventListener(&#x27;change&#x27;, () =&gt; {
+    applyFilterAndRender();
+  });
+
+  const DATE_RE = /^\d{2}\/\d{2}\/\d{2}$/;
+  const KNOWN_STATUSES = [&#x27;ACTIVE&#x27;, &#x27;OUTED&#x27;, &#x27;VACANT&#x27;, &#x27;NON-WORKING NUMBER&#x27;, &#x27;TELEPHONE NUMBER NOT FOUND&#x27;, &#x27;FUTURE SUBSCRIBER&#x27;];
+
+  function tokenize(line) {
+    return line.trim().split(/\s+/).filter(s =&gt; s.length &gt; 0);
+  }
+
+  // Finds where a known status phrase starts at the end of `tokens` (checks the
+  // longest suffix first). Returns the start index, or null if nothing matches.
+  function findStatusSuffixStart(tokens) {
+    for (let k = 0; k &lt; tokens.length; k++) {
+      const suffix = tokens.slice(k).join(&#x27; &#x27;).toUpperCase();
+      if (KNOWN_STATUSES.includes(suffix)) return k;
+    }
+    return null;
+  }
+
+  function classifyLine(line) {
+    const tokens = tokenize(line);
+    let ban = &#x27;&#x27;, parent = &#x27;&#x27;, orgDate = &#x27;&#x27;, outDate = &#x27;&#x27;, status = &#x27;&#x27;;
+    if (!tokens.length) return [ban, parent, orgDate, outDate, status];
+
+    ban = tokens[0];
+    const rest = tokens.slice(1);
+    if (!rest.length) return [ban, parent, orgDate, outDate, status];
+
+    const firstDateIdx = rest.findIndex(t =&gt; DATE_RE.test(t));
+
+    if (firstDateIdx !== -1) {
+      // Anchor on the date(s): everything before the first date is Parent,
+      // the date itself is Org date, an immediately-following date is Out date,
+      // and everything after that is Status (joined back together).
+      parent = rest.slice(0, firstDateIdx).join(&#x27; &#x27;);
+      orgDate = rest[firstDateIdx];
+      let statusStart = firstDateIdx + 1;
+      if (rest[statusStart] &amp;&amp; DATE_RE.test(rest[statusStart])) {
+        outDate = rest[statusStart];
+        statusStart += 1;
+      }
+      status = rest.slice(statusStart).join(&#x27; &#x27;);
+    } else {
+      // No dates on this line — try to recognize a known status phrase at the end.
+      const k = findStatusSuffixStart(rest);
+      if (k !== null) {
+        parent = rest.slice(0, k).join(&#x27; &#x27;);
+        status = rest.slice(k).join(&#x27; &#x27;);
+      } else {
+        // Unrecognized status text: best effort — last token is Status, rest is Parent.
+        status = rest[rest.length - 1];
+        parent = rest.slice(0, -1).join(&#x27; &#x27;);
+      }
+    }
+
+    return [ban, parent, orgDate, outDate, status];
+  }
+
+  function looksLikeHeader(line) {
+    const firstToken = tokenize(line)[0] || &#x27;&#x27;;
+    // A real record&#x27;s first field (BAN) starts with a digit; a header label doesn&#x27;t.
+    return !/^\d/.test(firstToken);
+  }
+
+  function parse(text) {
+    const lines = text.split(/\r?\n/).filter(l =&gt; l.trim().length &gt; 0);
+    if (!lines.length) return [];
+
+    const dataLines = looksLikeHeader(lines[0]) ? lines.slice(1) : lines;
+    if (!dataLines.length) return [];
+
+    return dataLines.map(classifyLine);
+  }
+
+  function populateStatusFilter(bodyRows) {
+    const seen = new Map(); // uppercased key -&gt; display label (first seen casing)
+    for (const r of bodyRows) {
+      const raw = (r[4] || &#x27;&#x27;).trim();
+      const key = raw ? raw.toUpperCase() : &#x27;(BLANK)&#x27;;
+      if (!seen.has(key)) seen.set(key, raw ? raw : &#x27;(blank)&#x27;);
+    }
+
+    const previousValue = statusFilterEl.value || &#x27;ALL&#x27;;
+    const sortedKeys = [...seen.keys()].sort();
+
+    statusFilterEl.innerHTML = &#x27;&lt;option value=&quot;ALL&quot;&gt;All statuses&lt;/option&gt;&#x27; +
+      sortedKeys.map(key =&gt; `&lt;option value=&quot;${escapeHtml(key)}&quot;&gt;${escapeHtml(seen.get(key))}&lt;/option&gt;`).join(&#x27;&#x27;);
+
+    // Keep the previous selection if that status still exists in the new data, else reset to All.
+    statusFilterEl.value = sortedKeys.includes(previousValue) || previousValue === &#x27;ALL&#x27; ? previousValue : &#x27;ALL&#x27;;
+    statusFilterEl.disabled = bodyRows.length === 0;
+  }
+
+  function render() {
+    const text = inputEl.value;
+    if (!text.trim()) {
+      allBodyRows = [];
+      populateStatusFilter([]);
+      tableScroll.innerHTML = &#x27;&lt;div class=&quot;empty-state&quot;&gt;Your table will appear here as you paste.&lt;/div&gt;&#x27;;
+      statusEl.textContent = &#x27;Nothing pasted yet&#x27;;
+      toggleButtons(false);
+      currentRows = [];
+      return;
+    }
+
+    allBodyRows = parse(text);
+    populateStatusFilter(allBodyRows);
+    applyFilterAndRender();
+  }
+
+  function applyFilterAndRender() {
+    const filterVal = statusFilterEl.value || &#x27;ALL&#x27;;
+    const filteredRows = filterVal === &#x27;ALL&#x27;
+      ? allBodyRows
+      : allBodyRows.filter(r =&gt; {
+          const raw = (r[4] || &#x27;&#x27;).trim();
+          const key = raw ? raw.toUpperCase() : &#x27;(BLANK)&#x27;;
+          return key === filterVal;
+        });
+
+    currentRows = [FIELDS, ...filteredRows];
+
+    if (!allBodyRows.length) {
+      tableScroll.innerHTML = &#x27;&lt;div class=&quot;empty-state&quot;&gt;Your table will appear here as you paste.&lt;/div&gt;&#x27;;
+      statusEl.textContent = &#x27;Nothing pasted yet&#x27;;
+      toggleButtons(false);
+      return;
+    }
+
+    let html = &#x27;&lt;table&gt;&lt;thead&gt;&lt;tr&gt;&#x27;;
+    for (const f of FIELDS) html += `&lt;th&gt;${escapeHtml(f)}&lt;/th&gt;`;
+    html += &#x27;&lt;/tr&gt;&lt;/thead&gt;&lt;tbody&gt;&#x27;;
+    if (filteredRows.length) {
+      for (const r of filteredRows) {
+        html += &#x27;&lt;tr&gt;&#x27;;
+        for (const cell of r) html += `&lt;td&gt;${escapeHtml(cell)}&lt;/td&gt;`;
+        html += &#x27;&lt;/tr&gt;&#x27;;
+      }
+    }
+    html += &#x27;&lt;/tbody&gt;&lt;/table&gt;&#x27;;
+    tableScroll.innerHTML = filteredRows.length
+      ? html
+      : html + &#x27;&lt;div class=&quot;empty-state&quot;&gt;No records match that status.&lt;/div&gt;&#x27;;
+
+    if (filterVal === &#x27;ALL&#x27;) {
+      statusEl.textContent = `${allBodyRows.length} record${allBodyRows.length===1?&#x27;&#x27;:&#x27;s&#x27;} × ${FIELDS.length} columns`;
+    } else {
+      statusEl.textContent = `${filteredRows.length} of ${allBodyRows.length} record${allBodyRows.length===1?&#x27;&#x27;:&#x27;s&#x27;} shown × ${FIELDS.length} columns`;
+    }
+    toggleButtons(filteredRows.length &gt; 0);
+  }
+
+  function escapeHtml(str) {
+    return String(str)
+      .replace(/&amp;/g, &#x27;&amp;amp;&#x27;)
+      .replace(/&lt;/g, &#x27;&amp;lt;&#x27;)
+      .replace(/&gt;/g, &#x27;&amp;gt;&#x27;);
+  }
+
+  function toggleButtons(enabled) {
+    downloadXlsxBtn.disabled = !enabled;
+    downloadCsvBtn.disabled = !enabled;
+    copyBtn.disabled = !enabled;
+    selectAllBtn.disabled = !enabled;
+  }
+
+  downloadXlsxBtn.addEventListener(&#x27;click&#x27;, () =&gt; {
+    if (!currentRows.length) return;
+    const ws = XLSX.utils.aoa_to_sheet(currentRows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, &#x27;Sheet1&#x27;);
+    XLSX.writeFile(wb, &#x27;data.xlsx&#x27;);
+  });
+
+  downloadCsvBtn.addEventListener(&#x27;click&#x27;, () =&gt; {
+    if (!currentRows.length) return;
+    const csv = currentRows.map(r =&gt;
+      r.map(cell =&gt; {
+        const needsQuotes = /[&quot;,\n]/.test(cell);
+        const escaped = cell.replace(/&quot;/g, &#x27;&quot;&quot;&#x27;);
+        return needsQuotes ? `&quot;${escaped}&quot;` : escaped;
+      }).join(&#x27;,&#x27;)
+    ).join(&#x27;\r\n&#x27;);
+    const blob = new Blob([csv], { type: &#x27;text/csv;charset=utf-8;&#x27; });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement(&#x27;a&#x27;);
+    a.href = url;
+    a.download = &#x27;data.csv&#x27;;
+    a.click();
+    URL.revokeObjectURL(url);
+  });
+
+  copyBtn.addEventListener(&#x27;click&#x27;, async () =&gt; {
+    if (!currentRows.length) return;
+    const tsv = currentRows.map(r =&gt; r.join(&#x27;\t&#x27;)).join(&#x27;\n&#x27;);
+    try {
+      await navigator.clipboard.writeText(tsv);
+      const old = copyBtn.textContent;
+      copyBtn.textContent = &#x27;Copied!&#x27;;
+      setTimeout(() =&gt; copyBtn.textContent = old, 1500);
+    } catch (e) {
+      alert(&#x27;Could not copy automatically — please select and copy the text manually.&#x27;);
+    }
+  });
+
+  selectAllBtn.addEventListener(&#x27;click&#x27;, () =&gt; {
+    const table = tableScroll.querySelector(&#x27;table&#x27;);
+    if (!table) return;
+    const range = document.createRange();
+    range.selectNodeContents(table);
+    const selection = window.getSelection();
+    selection.removeAllRanges();
+    selection.addRange(range);
+    const old = selectAllBtn.textContent;
+    selectAllBtn.textContent = &#x27;Selected — Ctrl/Cmd+C to copy&#x27;;
+    setTimeout(() =&gt; selectAllBtn.textContent = old, 2000);
+  });
+&lt;/script&gt;
+
+&lt;script&gt;
+window.addEventListener(&#x27;message&#x27;, function(e){
+  if (e &amp;&amp; e.data &amp;&amp; e.data.type === &#x27;ops-theme&#x27;){
+    document.documentElement.setAttribute(&#x27;data-theme&#x27;, e.data.mode === &#x27;light&#x27; ? &#x27;light&#x27; : &#x27;&#x27;);
+  }
+});
+&lt;/script&gt;
+&lt;/body&gt;
+&lt;/html&gt;
+"></iframe>
+      <iframe class="toolframe" id="frame-equ" srcdoc="&lt;!DOCTYPE html&gt;
+&lt;html lang=&quot;en&quot;&gt;
+&lt;head&gt;
+&lt;meta charset=&quot;UTF-8&quot;&gt;
+&lt;title&gt;S&amp;amp;E Deprovision Checker&lt;/title&gt;
+&lt;style&gt;
+  :root{
+    --bg:        #0a0d0a;
+    --panel:     #0f140f;
+    --line:      #1c2b1c;
+    --phosphor:  #3ef07c;
+    --phosphor-dim: #1f8a4c;
+    --amber:     #ffb640;
+    --amber-dim: #7a5a1e;
+    --red:       #ff5d5d;
+    --red-border-dim: #6b2b2b;
+    --text-mute: #6f8a72;
+    --text:      #cfe9d6;
+    --input-bg:  #070907;
+    --placeholder: #2c4630;
+  }
+  :root[data-theme=&quot;light&quot;]{
+    --bg:        #f4f3ee;
+    --panel:     #ffffff;
+    --line:      #d9d5c9;
+    --phosphor:  #1f8a4c;
+    --phosphor-dim: #2f8a4a;
+    --amber:     #a5690a;
+    --amber-dim: #c99a4c;
+    --red:       #c0392b;
+    --red-border-dim: #e3b7b3;
+    --text-mute: #6b6f68;
+    --text:      #1b1f23;
+    --input-bg:  #fbfbf8;
+    --placeholder: #b9c2b7;
+  }
+  *{box-sizing:border-box;}
+  html,body{
+    margin:0; padding:0;
+    background:var(--bg);
+    color:var(--phosphor);
+    font-family:&#x27;JetBrains Mono&#x27;,&#x27;Consolas&#x27;,&#x27;SFMono-Regular&#x27;,monospace;
+    min-height:100vh;
+  }
+  body{
+    background-image:
+      repeating-linear-gradient(0deg, rgba(62,240,124,0.035) 0px, rgba(62,240,124,0.035) 1px, transparent 1px, transparent 3px);
+  }
+  .crt-wrap{
+    max-width:1280px;
+    margin:0 auto;
+    padding:28px 24px 60px;
+  }
+  header{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-end;
+    border-bottom:1px solid var(--line);
+    padding-bottom:14px;
+    margin-bottom:22px;
+  }
+  header h1{
+    font-size:19px;
+    letter-spacing:.12em;
+    margin:0;
+    color:var(--phosphor);
+    text-shadow:0 0 6px rgba(62,240,124,.45);
+    font-weight:600;
+  }
+  header .sub{
+    color:var(--text-mute);
+    font-size:11.5px;
+    letter-spacing:.06em;
+    margin-top:4px;
+  }
+  header .clock{
+    color:var(--text-mute);
+    font-size:11.5px;
+    text-align:right;
+  }
+  .grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:18px;
+  }
+  @media (max-width: 900px){
+    .grid{grid-template-columns:1fr;}
+  }
+  .panel{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:2px;
+    padding:14px 14px 16px;
+    position:relative;
+  }
+  .panel .tag{
+    position:absolute;
+    top:-9px; left:12px;
+    background:var(--bg);
+    padding:0 8px;
+    font-size:10.5px;
+    letter-spacing:.14em;
+    color:var(--phosphor-dim);
+  }
+  textarea{
+    width:100%;
+    height:290px;
+    resize:vertical;
+    background:var(--input-bg);
+    color:var(--phosphor);
+    border:1px solid var(--line);
+    border-radius:2px;
+    padding:10px;
+    font-family:inherit;
+    font-size:12.5px;
+    line-height:1.45;
+    white-space:pre;
+    overflow-x:auto;
+  }
+  textarea::placeholder{color:var(--placeholder);}
+  .actions{
+    display:flex;
+    align-items:center;
+    gap:14px;
+    margin:20px 0 6px;
+  }
+  button#runBtn{
+    background:var(--phosphor);
+    color:#04120a;
+    border:none;
+    font-family:inherit;
+    font-weight:700;
+    letter-spacing:.08em;
+    font-size:12.5px;
+    padding:11px 22px;
+    border-radius:2px;
+    cursor:pointer;
+    box-shadow:0 0 0 1px rgba(62,240,124,.4);
+  }
+  button#runBtn:hover{ background:#57ff9a; }
+  button#clearBtn{
+    background:transparent;
+    color:var(--text-mute);
+    border:1px solid var(--line);
+    font-family:inherit;
+    font-size:11.5px;
+    padding:10px 16px;
+    border-radius:2px;
+    cursor:pointer;
+    letter-spacing:.06em;
+  }
+  button#clearBtn:hover{ color:var(--phosphor); border-color:var(--phosphor-dim); }
+  .status-msg{
+    font-size:11.5px;
+    color:var(--text-mute);
+    letter-spacing:.03em;
+  }
+  .results{
+    margin-top:26px;
+    display:grid;
+    grid-template-columns:340px 1fr;
+    gap:18px;
+  }
+  @media (max-width: 900px){
+    .results{grid-template-columns:1fr;}
+  }
+  .removed-list{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:2px;
+    padding:14px;
+  }
+  .removed-list h2, .equ-out h2{
+    font-size:12px;
+    letter-spacing:.12em;
+    margin:0 0 12px;
+    color:var(--text-mute);
+    font-weight:600;
+  }
+  .item-row{
+    display:flex;
+    justify-content:space-between;
+    gap:8px;
+    padding:10px 0;
+    border-bottom:1px dashed var(--line);
+    font-size:12px;
+  }
+  .item-row:last-child{border-bottom:none;}
+  .item-desc{color:var(--text);}
+  .item-tic{color:var(--text-mute); font-size:11px;}
+  .item-qty{
+    font-size:11px;
+    color:var(--text-mute);
+    margin-top:4px;
+    letter-spacing:.02em;
+  }
+  .item-qty b{ color:var(--text); font-weight:600; }
+  .badges{
+    display:flex;
+    flex-direction:column;
+    gap:5px;
+    align-items:flex-end;
+  }
+  .pill{
+    font-size:10px;
+    padding:2px 7px;
+    border-radius:10px;
+    letter-spacing:.05em;
+    white-space:nowrap;
+    height:fit-content;
+  }
+  .pill.found{ background:rgba(255,182,64,.15); color:var(--amber); border:1px solid var(--amber-dim); }
+  .pill.missing{ background:rgba(255,93,93,.12); color:var(--red); border:1px solid var(--red-border-dim); }
+  .pill.returned-full{ background:rgba(62,240,124,.14); color:var(--phosphor); border:1px solid var(--phosphor-dim); }
+  .pill.returned-partial{ background:rgba(255,182,64,.15); color:var(--amber); border:1px solid var(--amber-dim); }
+  .pill.returned-none{ background:rgba(255,93,93,.12); color:var(--red); border:1px solid var(--red-border-dim); }
+  .equ-out{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:2px;
+    padding:14px;
+    overflow-x:auto;
+  }
+  pre#equRender{
+    margin:0;
+    font-size:12.5px;
+    line-height:1.55;
+    white-space:pre;
+  }
+  .row-hit{
+    background:var(--amber);
+    color:#1a1200;
+    display:inline-block;
+    width:100%;
+    box-shadow:0 0 8px rgba(255,182,64,.35);
+  }
+  .row-plain{ color:var(--phosphor-dim); display:inline-block; width:100%; }
+  .row-header{ color:var(--text); display:inline-block; width:100%; }
+  .empty-note{
+    color:var(--text-mute);
+    font-size:12px;
+    padding:20px 4px;
+  }
+  .legend{
+    display:flex;
+    gap:18px;
+    margin-top:14px;
+    font-size:11px;
+    color:var(--text-mute);
+  }
+  .legend span.sw{
+    display:inline-block;
+    width:10px; height:10px;
+    margin-right:6px;
+    border-radius:2px;
+    vertical-align:middle;
+  }
+  .sw.amber{ background:var(--amber); }
+  .sw.dim{ background:var(--phosphor-dim); }
+  footer{
+    margin-top:36px;
+    color:var(--placeholder);
+    font-size:10.5px;
+    letter-spacing:.05em;
+    text-align:center;
+  }
+&lt;/style&gt;
+&lt;/head&gt;
+&lt;body&gt;
+&lt;div class=&quot;crt-wrap&quot;&gt;
+
+  &lt;header&gt;
+    &lt;div&gt;
+      &lt;h1&gt;S&amp;amp;E DEPROVISION CHECK&lt;/h1&gt;
+      &lt;div class=&quot;sub&quot;&gt;paste an INQ &amp;nbsp;→&amp;nbsp; find every removed (–) S&amp;amp;E code &amp;nbsp;→&amp;nbsp; highlight it on the EQU &amp;amp; check qty returned&lt;/div&gt;
+    &lt;/div&gt;
+    &lt;div class=&quot;clock&quot; id=&quot;clockLine&quot;&gt;&lt;/div&gt;
+  &lt;/header&gt;
+
+  &lt;div class=&quot;grid&quot;&gt;
+    &lt;div class=&quot;panel&quot;&gt;
+      &lt;span class=&quot;tag&quot;&gt;INQ SCREEN&lt;/span&gt;
+      &lt;textarea id=&quot;inqInput&quot; placeholder=&quot;Paste the raw INQ screen text here (the one with + and - lines under &amp;quot;A S&amp;amp;E&amp;quot;)...&quot;&gt;&lt;/textarea&gt;
+    &lt;/div&gt;
+    &lt;div class=&quot;panel&quot;&gt;
+      &lt;span class=&quot;tag&quot;&gt;EQU SCREEN&lt;/span&gt;
+      &lt;textarea id=&quot;equInput&quot; placeholder=&quot;Paste the raw EQU screen text here (the one with the &amp;quot;s&amp;amp;e code / mac / qty / amount&amp;quot; table)...&quot;&gt;&lt;/textarea&gt;
+    &lt;/div&gt;
+  &lt;/div&gt;
+
+  &lt;div class=&quot;actions&quot;&gt;
+    &lt;button id=&quot;runBtn&quot;&gt;RUN CHECK&lt;/button&gt;
+    &lt;button id=&quot;clearBtn&quot;&gt;CLEAR&lt;/button&gt;
+    &lt;span class=&quot;status-msg&quot; id=&quot;statusMsg&quot;&gt;&lt;/span&gt;
+  &lt;/div&gt;
+
+  &lt;div class=&quot;results&quot; id=&quot;resultsBlock&quot; style=&quot;display:none;&quot;&gt;
+    &lt;div class=&quot;removed-list&quot;&gt;
+      &lt;h2&gt;REMOVED ON INQ (–)&lt;/h2&gt;
+      &lt;div id=&quot;removedList&quot;&gt;&lt;/div&gt;
+    &lt;/div&gt;
+    &lt;div class=&quot;equ-out&quot;&gt;
+      &lt;h2&gt;EQU — MATCHES HIGHLIGHTED&lt;/h2&gt;
+      &lt;pre id=&quot;equRender&quot;&gt;&lt;/pre&gt;
+      &lt;div class=&quot;legend&quot;&gt;
+        &lt;div&gt;&lt;span class=&quot;sw amber&quot;&gt;&lt;/span&gt;row matches a removed S&amp;amp;E code&lt;/div&gt;
+        &lt;div&gt;&lt;span class=&quot;sw dim&quot;&gt;&lt;/span&gt;unaffected row&lt;/div&gt;
+      &lt;/div&gt;
+      &lt;div class=&quot;legend&quot; style=&quot;margin-top:6px;&quot;&gt;
+        &lt;div&gt;qty shown per removed TIC: total removed vs. total added back (+) for the same code on this INQ&lt;/div&gt;
+      &lt;/div&gt;
+    &lt;/div&gt;
+  &lt;/div&gt;
+
+  &lt;footer&gt;parsing is done entirely in your browser — nothing is sent anywhere&lt;/footer&gt;
+&lt;/div&gt;
+
+&lt;script&gt;
+function tick(){
+  const d = new Date();
+  document.getElementById(&#x27;clockLine&#x27;).textContent =
+    d.toLocaleDateString(&#x27;en-CA&#x27;) + &#x27;  &#x27; + d.toLocaleTimeString(&#x27;en-GB&#x27;);
+}
+tick(); setInterval(tick, 1000);
+
+// Matches a +/- S&amp;E line on an INQ screen, e.g.:
+// &quot;- OFC PHONE SL $46 FB,                          1     0.00 TT  2U1CY           &quot;
+const INQ_LINE_RE = /^\s*([+\-])\s+(.+?),?\s{2,}(\d+)\s+([\d.]+)\s+(\S+)\s+([0-9A-Z]{4,6})\b/i;
+
+// Matches a row in the EQU &quot;s&amp;e code / mac / qty / amount / fps / tic&quot; table, e.g.:
+// &quot;FIBRE INET 25 3Y V2       DF     1        50.00 EE  2U0LE *        DF&quot;
+const EQU_LINE_RE = /^(.{2,40}?)\s+(\S{1,4})\s+(\d+)\s+([\d.]+)\s+(\S+)\s+([0-9A-Z]{4,6})\b/i;
+
+// Some S&amp;E description fields carry a trailing &quot;,&lt;range/number&gt;&quot; (e.g. &quot;V DID NUM
+// FB 5Y,780-342-5900-5949&quot;). This returns just the code portion before the comma.
+function extractCode(desc){
+  const idx = desc.indexOf(&#x27;,&#x27;);
+  return (idx === -1 ? desc : desc.slice(0, idx)).trim();
+}
+
+// Parses every +/- item line on the INQ screen, keeping sign, description, qty and tic.
+function parseInqLines(text){
+  const lines = [];
+  text.split(&#x27;\n&#x27;).forEach(line=&gt;{
+    const m = line.match(INQ_LINE_RE);
+    if(m){
+      const description = m[2].trim();
+      lines.push({
+        sign: m[1],
+        description: description,
+        code: extractCode(description),
+        qty: parseInt(m[3], 10) || 0,
+        tic: m[6].toUpperCase()
+      });
+    }
+  });
+  return lines;
+}
+
+// Groups the removed (-) lines by TIC and totals how much of that same TIC
+// was added back (+) anywhere else on the same INQ screen.
+function groupRemovedByTic(allLines){
+  const addedQtyByTic = new Map();
+  allLines.forEach(l=&gt;{
+    if(l.sign === &#x27;+&#x27;){
+      addedQtyByTic.set(l.tic, (addedQtyByTic.get(l.tic) || 0) + l.qty);
+    }
+  });
+
+  const groups = new Map(); // preserves first-seen order
+  allLines.forEach(l=&gt;{
+    if(l.sign !== &#x27;-&#x27;) return;
+    if(!groups.has(l.tic)){
+      groups.set(l.tic, { tic: l.tic, descriptions: [], removedQty: 0 });
+    }
+    const g = groups.get(l.tic);
+    if(!g.descriptions.includes(l.code) &amp;&amp; l.code){
+      g.descriptions.push(l.code);
+    }
+    g.removedQty += l.qty;
+  });
+
+  return [...groups.values()].map(g=&gt;({
+    ...g,
+    returnedQty: addedQtyByTic.get(g.tic) || 0
+  }));
+}
+
+function parseEquTics(line){
+  const m = line.match(EQU_LINE_RE);
+  if(!m) return null;
+  return { description: m[1].trim(), tic: m[6].toUpperCase() };
+}
+
+function escapeHtml(s){
+  return s.replace(/&amp;/g,&#x27;&amp;amp;&#x27;).replace(/&lt;/g,&#x27;&amp;lt;&#x27;).replace(/&gt;/g,&#x27;&amp;gt;&#x27;);
+}
+
+function run(){
+  const inqText = document.getElementById(&#x27;inqInput&#x27;).value;
+  const equText = document.getElementById(&#x27;equInput&#x27;).value;
+  const statusMsg = document.getElementById(&#x27;statusMsg&#x27;);
+
+  if(!inqText.trim() || !equText.trim()){
+    statusMsg.textContent = &#x27;paste both an INQ and an EQU screen first.&#x27;;
+    document.getElementById(&#x27;resultsBlock&#x27;).style.display = &#x27;none&#x27;;
+    return;
+  }
+
+  const allLines = parseInqLines(inqText);
+  const removedGroups = groupRemovedByTic(allLines);
+
+  if(removedGroups.length === 0){
+    statusMsg.textContent = &#x27;no &quot;-&quot; (removed) S&amp;E lines found on that INQ.&#x27;;
+    document.getElementById(&#x27;resultsBlock&#x27;).style.display = &#x27;none&#x27;;
+    return;
+  }
+
+  const removedTics = new Set(removedGroups.map(g=&gt;g.tic));
+  const matchedTics = new Set();
+
+  const equLines = equText.split(&#x27;\n&#x27;);
+  const renderedLines = equLines.map(line=&gt;{
+    const parsed = parseEquTics(line);
+    const safe = escapeHtml(line.length ? line : &#x27; &#x27;);
+    if(parsed &amp;&amp; removedTics.has(parsed.tic)){
+      matchedTics.add(parsed.tic);
+      return `&lt;span class=&quot;row-hit&quot;&gt;${safe}&lt;/span&gt;`;
+    }
+    if(parsed){
+      return `&lt;span class=&quot;row-plain&quot;&gt;${safe}&lt;/span&gt;`;
+    }
+    return `&lt;span class=&quot;row-header&quot;&gt;${safe}&lt;/span&gt;`;
+  });
+
+  document.getElementById(&#x27;equRender&#x27;).innerHTML = renderedLines.join(&#x27;\n&#x27;);
+
+  const removedListEl = document.getElementById(&#x27;removedList&#x27;);
+  removedListEl.innerHTML = removedGroups.map(g=&gt;{
+    const found = matchedTics.has(g.tic);
+    const returnStatus = g.returnedQty &lt;= 0
+      ? { cls: &#x27;returned-none&#x27;, label: &#x27;NOT RETURNED&#x27; }
+      : g.returnedQty &gt;= g.removedQty
+        ? { cls: &#x27;returned-full&#x27;, label: &#x27;FULLY RETURNED&#x27; }
+        : { cls: &#x27;returned-partial&#x27;, label: &#x27;PARTIALLY RETURNED&#x27; };
+    const descLabel = g.descriptions.length
+      ? g.descriptions.join(&#x27; / &#x27;)
+      : &#x27;(no description)&#x27;;
+    return `&lt;div class=&quot;item-row&quot;&gt;
+      &lt;div&gt;
+        &lt;div class=&quot;item-desc&quot;&gt;${escapeHtml(descLabel)}&lt;/div&gt;
+        &lt;div class=&quot;item-tic&quot;&gt;tic ${escapeHtml(g.tic)}&lt;/div&gt;
+        &lt;div class=&quot;item-qty&quot;&gt;removed &lt;b&gt;${g.removedQty}&lt;/b&gt; &amp;nbsp;·&amp;nbsp; returned &lt;b&gt;${g.returnedQty}&lt;/b&gt;&lt;/div&gt;
+      &lt;/div&gt;
+      &lt;div class=&quot;badges&quot;&gt;
+        &lt;span class=&quot;pill ${found ? &#x27;found&#x27; : &#x27;missing&#x27;}&quot;&gt;${found ? &#x27;FOUND ON EQU&#x27; : &#x27;NOT ON EQU&#x27;}&lt;/span&gt;
+        &lt;span class=&quot;pill ${returnStatus.cls}&quot;&gt;${returnStatus.label}&lt;/span&gt;
+      &lt;/div&gt;
+    &lt;/div&gt;`;
+  }).join(&#x27;&#x27;);
+
+  const foundCount = removedGroups.filter(g=&gt;matchedTics.has(g.tic)).length;
+  const fullyReturnedCount = removedGroups.filter(g=&gt;g.returnedQty &gt;= g.removedQty &amp;&amp; g.removedQty &gt; 0).length;
+  statusMsg.textContent = `${removedGroups.length} removed code(s) on INQ — ${foundCount} matched on EQU — ${fullyReturnedCount} fully returned.`;
+  document.getElementById(&#x27;resultsBlock&#x27;).style.display = &#x27;grid&#x27;;
+}
+
+document.getElementById(&#x27;runBtn&#x27;).addEventListener(&#x27;click&#x27;, run);
+document.getElementById(&#x27;clearBtn&#x27;).addEventListener(&#x27;click&#x27;, ()=&gt;{
+  document.getElementById(&#x27;inqInput&#x27;).value = &#x27;&#x27;;
+  document.getElementById(&#x27;equInput&#x27;).value = &#x27;&#x27;;
+  document.getElementById(&#x27;statusMsg&#x27;).textContent = &#x27;&#x27;;
+  document.getElementById(&#x27;resultsBlock&#x27;).style.display = &#x27;none&#x27;;
+});
+&lt;/script&gt;
+
+&lt;script&gt;
+window.addEventListener(&#x27;message&#x27;, function(e){
+  if (e &amp;&amp; e.data &amp;&amp; e.data.type === &#x27;ops-theme&#x27;){
+    document.documentElement.setAttribute(&#x27;data-theme&#x27;, e.data.mode === &#x27;light&#x27; ? &#x27;light&#x27; : &#x27;&#x27;);
+  }
+});
+&lt;/script&gt;
+&lt;/body&gt;
+&lt;/html&gt;
+"></iframe>
+      <iframe class="toolframe" id="frame-date" srcdoc="&lt;!DOCTYPE html&gt;
+&lt;html lang=&quot;en&quot;&gt;
+&lt;head&gt;
+&lt;meta charset=&quot;UTF-8&quot;&gt;
+&lt;title&gt;Bulk Date Comparison Tool&lt;/title&gt;
+&lt;style&gt;
+  :root {
+    --bg: #0b0f0c;
+    --card: #0f1512;
+    --text: #d8e4dc;
+    --muted: #7c9186;
+    --good: #5fd97a;
+    --good-bg: rgba(95,217,122,0.08);
+    --bad: #ff6a6a;
+    --bad-bg: rgba(255,106,106,0.08);
+    --accent: #5fd97a;
+    --accent-ink: #06110a;
+    --border: #1e2b22;
+  }
+  :root[data-theme=&quot;light&quot;] {
+    --bg: #f4f3ee;
+    --card: #ffffff;
+    --text: #1b1f23;
+    --muted: #6b6f68;
+    --good: #1f8a4c;
+    --good-bg: #eaf7ee;
+    --bad: #c0392b;
+    --bad-bg: #fbeceb;
+    --accent: #1f8a4c;
+    --accent-ink: #ffffff;
+    --border: #d9d5c9;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: &#x27;IBM Plex Mono&#x27;, &#x27;Courier New&#x27;, monospace;
+    background: var(--bg);
+    background-image: radial-gradient(circle at 50% 0%, rgba(95,217,122,0.05), transparent 60%);
+    color: var(--text);
+    display: flex;
+    justify-content: center;
+    padding: 32px 16px;
+    position: relative;
+  }
+  body::before{
+    content:&quot;&quot;;
+    pointer-events:none;
+    position:fixed;
+    inset:0;
+    background: repeating-linear-gradient(
+      to bottom,
+      rgba(255,255,255,0.015) 0px,
+      rgba(255,255,255,0.015) 1px,
+      transparent 1px,
+      transparent 3px
+    );
+    z-index:50;
+  }
+  .container { width: 100%; max-width: 900px; }
+  h1 { font-size: 18px; margin: 0 0 4px; letter-spacing: .04em; text-transform: uppercase; color: var(--good); }
+  p.subtitle { color: var(--muted); font-size: 13px; margin: 0 0 20px; }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 24px;
+    box-shadow: none;
+    margin-bottom: 20px;
+  }
+  .cols { display: flex; gap: 16px; flex-wrap: wrap; }
+  .field { flex: 1; min-width: 240px; }
+  label { display: block; font-size: 11px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; margin-bottom: 6px; color: var(--muted); }
+  textarea {
+    width: 100%;
+    min-height: 200px;
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    font-size: 13.5px;
+    font-family: &#x27;IBM Plex Mono&#x27;, Consolas, monospace;
+    background: #070a08;
+    color: var(--good);
+    resize: vertical;
+  }
+  :root[data-theme=&quot;light&quot;] textarea { background: #fbfbf8; color: var(--text); }
+  textarea:focus { outline: none; border-color: var(--accent); }
+  .hint { font-size: 11.5px; color: var(--muted); margin-top: 4px; }
+  button {
+    padding: 12px 20px;
+    background: var(--accent);
+    color: var(--accent-ink);
+    border: 1px solid var(--accent);
+    border-radius: 3px;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: .05em;
+    text-transform: uppercase;
+    cursor: pointer;
+    margin-top: 16px;
+    font-family: inherit;
+  }
+  button:hover { background: #7cf29a; }
+  .error {
+    color: var(--bad);
+    font-size: 13px;
+    margin-top: 10px;
+    display: none;
+    white-space: pre-line;
+  }
+  .error.show { display: block; }
+  .summary {
+    display: none;
+    margin-bottom: 16px;
+    font-size: 14px;
+  }
+  .summary.show { display: flex; gap: 16px; flex-wrap: wrap; }
+  .pill {
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-weight: 600;
+    font-size: 12.5px;
+    border: 1px solid transparent;
+    cursor: pointer;
+    font-family: inherit;
+    transition: filter .15s, box-shadow .15s;
+  }
+  .pill:hover { filter: brightness(1.15); }
+  .pill.active { box-shadow: 0 0 0 2px var(--bg), 0 0 0 3px currentColor; }
+  .pill.good { background: var(--good-bg); color: var(--good); border: 1px solid var(--good); }
+  .pill.bad { background: var(--bad-bg); color: var(--bad); border: 1px solid var(--bad); }
+  .pill.total { background: var(--card); color: var(--accent); border: 1px solid var(--border); }
+  .col-phone { color: var(--muted); font-size: 13px; white-space: nowrap; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13.5px;
+  }
+  th, td {
+    text-align: left;
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border);
+  }
+  th { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; }
+  tr.good td.status { color: var(--good); font-weight: 600; }
+  tr.bad td.status { color: var(--bad); font-weight: 600; background: var(--bad-bg); }
+  tr.bad { background: var(--bad-bg); }
+  .row-num { color: var(--muted); width: 30px; }
+&lt;/style&gt;
+&lt;/head&gt;
+&lt;body&gt;
+&lt;div class=&quot;container&quot;&gt;
+  &lt;h1&gt;Bulk Date Comparison Tool&lt;/h1&gt;
+  &lt;p class=&quot;subtitle&quot;&gt;Paste a list of Completion Dates and a matching list of Org Dates (same order, one per line). Optionally add a matching list of telephone numbers to label each row. Completion Date must always be after Org Date.&lt;/p&gt;
+
+  &lt;div class=&quot;card&quot;&gt;
+    &lt;div class=&quot;cols&quot;&gt;
+      &lt;div class=&quot;field&quot;&gt;
+        &lt;label for=&quot;phoneList&quot;&gt;Telephone Number (optional, one per line)&lt;/label&gt;
+        &lt;textarea id=&quot;phoneList&quot; placeholder=&quot;2047286505&amp;#10;2049258743&amp;#10;2049426504&quot;&gt;&lt;/textarea&gt;
+        &lt;div class=&quot;hint&quot;&gt;Optional. Same line order as the dates below — line 1 pairs with line 1, etc.&lt;/div&gt;
+      &lt;/div&gt;
+      &lt;div class=&quot;field&quot;&gt;
+        &lt;label for=&quot;completionList&quot;&gt;Completion Date (one per line)&lt;/label&gt;
+        &lt;textarea id=&quot;completionList&quot; placeholder=&quot;20260729&amp;#10;20260729&amp;#10;20260729&quot;&gt;&lt;/textarea&gt;
+        &lt;div class=&quot;hint&quot;&gt;Accepts formats like 20260729, 2026-07-29, 26/07/29, 07/29/2026...&lt;/div&gt;
+      &lt;/div&gt;
+      &lt;div class=&quot;field&quot;&gt;
+        &lt;label for=&quot;orgList&quot;&gt;Org Date (one per line)&lt;/label&gt;
+        &lt;textarea id=&quot;orgList&quot; placeholder=&quot;26/07/29&amp;#10;26/07/24&amp;#10;26/07/29&quot;&gt;&lt;/textarea&gt;
+        &lt;div class=&quot;hint&quot;&gt;Same formats accepted. Lines are matched by position (line 1 with line 1, etc).&lt;/div&gt;
+      &lt;/div&gt;
+    &lt;/div&gt;
+    &lt;div class=&quot;error&quot; id=&quot;errorMsg&quot;&gt;&lt;/div&gt;
+    &lt;button onclick=&quot;compareBulk()&quot;&gt;Compare All&lt;/button&gt;
+  &lt;/div&gt;
+
+  &lt;div class=&quot;summary&quot; id=&quot;summary&quot;&gt;&lt;/div&gt;
+
+  &lt;div class=&quot;card&quot; id=&quot;resultCard&quot; style=&quot;display:none;&quot;&gt;
+    &lt;table&gt;
+      &lt;thead&gt;
+        &lt;tr&gt;
+          &lt;th class=&quot;row-num&quot;&gt;#&lt;/th&gt;
+          &lt;th&gt;Telephone Number&lt;/th&gt;
+          &lt;th&gt;Completion Date&lt;/th&gt;
+          &lt;th&gt;Org Date&lt;/th&gt;
+          &lt;th&gt;Days Diff&lt;/th&gt;
+          &lt;th&gt;Status&lt;/th&gt;
+        &lt;/tr&gt;
+      &lt;/thead&gt;
+      &lt;tbody id=&quot;resultBody&quot;&gt;&lt;/tbody&gt;
+    &lt;/table&gt;
+  &lt;/div&gt;
+&lt;/div&gt;
+
+&lt;script&gt;
+function parseDate(raw) {
+  if (!raw) return null;
+  const str = raw.trim();
+  if (!str) return null;
+
+  // YYYYMMDD (8 digits, no separators)
+  let m = str.match(/^(\d{4})(\d{2})(\d{2})$/);
+  if (m) {
+    const d = new Date(parseInt(m[1]), parseInt(m[2]) - 1, parseInt(m[3]));
+    if (!isNaN(d.getTime())) return d;
+  }
+
+  // YY/MM/DD or YY-MM-DD (2-digit year first, assume 2000s)
+  m = str.match(/^(\d{2})[\/\-.](\d{1,2})[\/\-.](\d{1,2})$/);
+  if (m) {
+    const yy = parseInt(m[1]);
+    const year = 2000 + yy;
+    const d = new Date(year, parseInt(m[2]) - 1, parseInt(m[3]));
+    if (!isNaN(d.getTime())) return d;
+  }
+
+  // YYYY/MM/DD or YYYY-MM-DD
+  m = str.match(/^(\d{4})[\/\-.](\d{1,2})[\/\-.](\d{1,2})$/);
+  if (m) {
+    const d = new Date(parseInt(m[1]), parseInt(m[2]) - 1, parseInt(m[3]));
+    if (!isNaN(d.getTime())) return d;
+  }
+
+  // MM/DD/YYYY (US style, 4-digit year last)
+  m = str.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{4})$/);
+  if (m) {
+    const d = new Date(parseInt(m[3]), parseInt(m[1]) - 1, parseInt(m[2]));
+    if (!isNaN(d.getTime())) return d;
+  }
+
+  // Fallback to native parsing (handles &quot;July 29, 2026&quot; etc.)
+  const d = new Date(str);
+  if (!isNaN(d.getTime())) return d;
+
+  return null;
+}
+
+function formatDate(d) {
+  return d.toLocaleDateString(undefined, { year: &#x27;numeric&#x27;, month: &#x27;short&#x27;, day: &#x27;numeric&#x27; });
+}
+
+let lastRows = [];
+let currentFilterMode = &#x27;all&#x27;;
+
+function escapeHtml(str) {
+  return String(str)
+    .replace(/&amp;/g, &#x27;&amp;amp;&#x27;)
+    .replace(/&lt;/g, &#x27;&amp;lt;&#x27;)
+    .replace(/&gt;/g, &#x27;&amp;gt;&#x27;);
+}
+
+function compareBulk() {
+  const phoneRaw = document.getElementById(&#x27;phoneList&#x27;).value;
+  const compRaw = document.getElementById(&#x27;completionList&#x27;).value;
+  const orgRaw = document.getElementById(&#x27;orgList&#x27;).value;
+  const errorEl = document.getElementById(&#x27;errorMsg&#x27;);
+  const summaryEl = document.getElementById(&#x27;summary&#x27;);
+  const resultCard = document.getElementById(&#x27;resultCard&#x27;);
+
+  errorEl.classList.remove(&#x27;show&#x27;);
+  errorEl.textContent = &#x27;&#x27;;
+
+  const phoneLines = phoneRaw.split(&#x27;\n&#x27;).map(s =&gt; s.trim()).filter(s =&gt; s.length &gt; 0);
+  const compLines = compRaw.split(&#x27;\n&#x27;).map(s =&gt; s.trim()).filter(s =&gt; s.length &gt; 0);
+  const orgLines = orgRaw.split(&#x27;\n&#x27;).map(s =&gt; s.trim()).filter(s =&gt; s.length &gt; 0);
+
+  if (compLines.length === 0 || orgLines.length === 0) {
+    errorEl.textContent = &#x27;Please paste at least one date in each box.&#x27;;
+    errorEl.classList.add(&#x27;show&#x27;);
+    summaryEl.classList.remove(&#x27;show&#x27;);
+    resultCard.style.display = &#x27;none&#x27;;
+    return;
+  }
+
+  if (compLines.length !== orgLines.length) {
+    errorEl.textContent = `Line count mismatch: ${compLines.length} Completion Dates vs ${orgLines.length} Org Dates. Each line must be paired.`;
+    errorEl.classList.add(&#x27;show&#x27;);
+  }
+  if (phoneLines.length &gt; 0 &amp;&amp; phoneLines.length !== Math.min(compLines.length, orgLines.length)) {
+    errorEl.textContent += (errorEl.textContent ? &#x27;\n&#x27; : &#x27;&#x27;) +
+      `Telephone Number count (${phoneLines.length}) doesn&#x27;t match the date rows (${Math.min(compLines.length, orgLines.length)}) — numbers will be paired by line as far as they go.`;
+    errorEl.classList.add(&#x27;show&#x27;);
+  }
+
+  const rowCount = Math.min(compLines.length, orgLines.length);
+  let goodCount = 0, badCount = 0, parseErrors = [];
+  const rows = [];
+
+  for (let i = 0; i &lt; rowCount; i++) {
+    const phoneStr = phoneLines[i] || &#x27;&#x27;;
+    const compStr = compLines[i];
+    const orgStr = orgLines[i];
+    const compDate = parseDate(compStr);
+    const orgDate = parseDate(orgStr);
+
+    if (!compDate || !orgDate) {
+      parseErrors.push(`Row ${i + 1}: couldn&#x27;t parse &quot;${compStr}&quot; or &quot;${orgStr}&quot;`);
+      rows.push({ i, phoneStr, compStr, orgStr, status: &#x27;error&#x27;, diff: null });
+      continue;
+    }
+
+    const diffDays = Math.round((compDate.setHours(0,0,0,0) - orgDate.setHours(0,0,0,0)) / 86400000);
+    const isGood = diffDays &gt;= 0;
+    if (isGood) goodCount++; else badCount++;
+
+    rows.push({
+      i,
+      phoneStr,
+      compStr: formatDate(compDate),
+      orgStr: formatDate(orgDate),
+      diff: diffDays,
+      status: isGood ? &#x27;good&#x27; : &#x27;bad&#x27;
+    });
+  }
+
+  if (parseErrors.length &gt; 0) {
+    errorEl.textContent += (errorEl.textContent ? &#x27;\n&#x27; : &#x27;&#x27;) + parseErrors.join(&#x27;\n&#x27;);
+    errorEl.classList.add(&#x27;show&#x27;);
+  }
+
+  lastRows = rows;
+  currentFilterMode = &#x27;all&#x27;;
+  const flaggedCount = rowCount - goodCount;
+
+  summaryEl.classList.add(&#x27;show&#x27;);
+  summaryEl.innerHTML = `
+    &lt;button type=&quot;button&quot; class=&quot;pill total active&quot; data-filter=&quot;all&quot;&gt;${rowCount} rows&lt;/button&gt;
+    &lt;button type=&quot;button&quot; class=&quot;pill good&quot; data-filter=&quot;good&quot;&gt;${goodCount} valid (completion on/after org)&lt;/button&gt;
+    &lt;button type=&quot;button&quot; class=&quot;pill bad&quot; data-filter=&quot;flagged&quot;&gt;${flaggedCount} flagged&lt;/button&gt;
+  `;
+
+  renderRows(&#x27;all&#x27;);
+  resultCard.style.display = &#x27;block&#x27;;
+}
+
+function buildRowHtml(r) {
+  let statusText, diffText;
+  if (r.status === &#x27;error&#x27;) {
+    statusText = &#x27;⚠ Could not parse&#x27;;
+    diffText = &#x27;—&#x27;;
+  } else if (r.status === &#x27;good&#x27;) {
+    statusText = r.diff === 0 ? &#x27;✓ Same day&#x27; : `✓ OK (+${r.diff}d)`;
+    diffText = `${r.diff} day${r.diff === 1 ? &#x27;&#x27; : &#x27;s&#x27;}`;
+  } else {
+    statusText = `✗ Before org (${r.diff}d)`;
+    diffText = `${r.diff} day${Math.abs(r.diff) === 1 ? &#x27;&#x27; : &#x27;s&#x27;}`;
+  }
+  return `
+    &lt;td class=&quot;row-num&quot;&gt;${r.i + 1}&lt;/td&gt;
+    &lt;td class=&quot;col-phone&quot;&gt;${r.phoneStr ? escapeHtml(r.phoneStr) : &#x27;—&#x27;}&lt;/td&gt;
+    &lt;td&gt;${r.compStr}&lt;/td&gt;
+    &lt;td&gt;${r.orgStr}&lt;/td&gt;
+    &lt;td&gt;${diffText}&lt;/td&gt;
+    &lt;td class=&quot;status&quot;&gt;${statusText}&lt;/td&gt;
+  `;
+}
+
+function renderRows(mode) {
+  const resultBody = document.getElementById(&#x27;resultBody&#x27;);
+  resultBody.innerHTML = &#x27;&#x27;;
+
+  const visibleRows = lastRows.filter(r =&gt; {
+    if (mode === &#x27;good&#x27;) return r.status === &#x27;good&#x27;;
+    if (mode === &#x27;flagged&#x27;) return r.status !== &#x27;good&#x27;;
+    return true;
+  });
+
+  if (!visibleRows.length) {
+    const tr = document.createElement(&#x27;tr&#x27;);
+    tr.innerHTML = `&lt;td colspan=&quot;6&quot; style=&quot;text-align:center; color:var(--muted); padding:20px;&quot;&gt;No rows match this filter.&lt;/td&gt;`;
+    resultBody.appendChild(tr);
+    return;
+  }
+
+  visibleRows.forEach(r =&gt; {
+    const tr = document.createElement(&#x27;tr&#x27;);
+    tr.className = r.status === &#x27;good&#x27; ? &#x27;good&#x27; : &#x27;bad&#x27;;
+    tr.innerHTML = buildRowHtml(r);
+    resultBody.appendChild(tr);
+  });
+}
+
+document.getElementById(&#x27;summary&#x27;).addEventListener(&#x27;click&#x27;, (e) =&gt; {
+  const btn = e.target.closest(&#x27;[data-filter]&#x27;);
+  if (!btn || !lastRows.length) return;
+  currentFilterMode = btn.dataset.filter;
+  document.querySelectorAll(&#x27;#summary .pill&#x27;).forEach(p =&gt; p.classList.toggle(&#x27;active&#x27;, p === btn));
+  renderRows(currentFilterMode);
+});
+&lt;/script&gt;
+
+&lt;script&gt;
+window.addEventListener(&#x27;message&#x27;, function(e){
+  if (e &amp;&amp; e.data &amp;&amp; e.data.type === &#x27;ops-theme&#x27;){
+    document.documentElement.setAttribute(&#x27;data-theme&#x27;, e.data.mode === &#x27;light&#x27; ? &#x27;light&#x27; : &#x27;&#x27;);
+  }
+});
+&lt;/script&gt;
+&lt;/body&gt;
+&lt;/html&gt;
+"></iframe>
+  </div>
+</div>
+<script>
+  const buttons = document.querySelectorAll('.tabbtn');
+  const frames = document.querySelectorAll('.toolframe');
+  buttons.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const target = btn.dataset.tab;
+      buttons.forEach(b => b.classList.toggle('active', b === btn));
+      frames.forEach(f => f.classList.toggle('active', f.id === 'frame-' + target));
+    });
+  });
+
+  function tickOpsClock(){
+    const d = new Date();
+    const el = document.getElementById('opsClock');
+    if (el) el.textContent = d.toLocaleDateString('en-CA') + '  ' + d.toLocaleTimeString('en-GB');
+  }
+  tickOpsClock();
+  setInterval(tickOpsClock, 1000);
+
+  // Theme toggle: applies to the outer shell and broadcasts to every embedded tool.
+  const themeSwitch = document.getElementById('themeSwitch');
+  let currentMode = 'dark';
+
+  function applyTheme(mode){
+    currentMode = mode;
+    document.documentElement.setAttribute('data-theme', mode === 'light' ? 'light' : '');
+    frames.forEach(f => {
+      if (f.contentWindow){
+        f.contentWindow.postMessage({ type: 'ops-theme', mode: mode }, '*');
+      }
+    });
+  }
+
+  themeSwitch.addEventListener('change', () => {
+    applyTheme(themeSwitch.checked ? 'light' : 'dark');
+  });
+
+  // Re-broadcast the current theme once each iframe finishes loading, in case
+  // the toggle was flipped before that iframe's listener was ready.
+  frames.forEach(f => {
+    f.addEventListener('load', () => {
+      f.contentWindow.postMessage({ type: 'ops-theme', mode: currentMode }, '*');
+    });
+  });
+</script>
+</body>
+</html>
