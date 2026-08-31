@@ -470,6 +470,37 @@ window.addEventListener(&#x27;message&#x27;, function(e){
     );
     z-index: 50;
   }
+  #backToTopBtn{
+    position: fixed;
+    bottom: 26px;
+    right: 26px;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: var(--green);
+    color: #06110a;
+    border: 1px solid var(--green-dim);
+    font-size: 18px;
+    line-height: 1;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(10px);
+    transition: opacity .2s, transform .2s, visibility .2s, background .15s;
+    z-index: 999;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.35);
+  }
+  #backToTopBtn.show{
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+  }
+  #backToTopBtn:hover{
+    background: #7cf29a;
+  }
   .wrap{
     max-width: 1180px;
     margin: 0 auto;
@@ -1598,12 +1629,32 @@ document.getElementById(&#x27;searchClearBtn&#x27;).addEventListener(&#x27;click
 
 &lt;/script&gt;
 
+&lt;button id=&quot;backToTopBtn&quot; title=&quot;Back to top&quot; aria-label=&quot;Back to top&quot;&gt;▲&lt;/button&gt;
+
 &lt;script&gt;
 window.addEventListener(&#x27;message&#x27;, function(e){
   if (e &amp;&amp; e.data &amp;&amp; e.data.type === &#x27;ops-theme&#x27;){
     document.documentElement.setAttribute(&#x27;data-theme&#x27;, e.data.mode === &#x27;light&#x27; ? &#x27;light&#x27; : &#x27;&#x27;);
   }
 });
+&lt;/script&gt;
+
+&lt;script&gt;
+(function(){
+  const btn = document.getElementById(&#x27;backToTopBtn&#x27;);
+  function onScroll(){
+    if (window.scrollY &gt; 300){
+      btn.classList.add(&#x27;show&#x27;);
+    } else {
+      btn.classList.remove(&#x27;show&#x27;);
+    }
+  }
+  window.addEventListener(&#x27;scroll&#x27;, onScroll);
+  onScroll();
+  btn.addEventListener(&#x27;click&#x27;, () =&gt; {
+    window.scrollTo({ top: 0, behavior: &#x27;smooth&#x27; });
+  });
+})();
 &lt;/script&gt;
 &lt;/body&gt;
 &lt;/html&gt;
