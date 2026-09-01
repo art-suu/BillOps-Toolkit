@@ -2916,11 +2916,13 @@ function parseDate(raw) {
     if (!isNaN(d.getTime())) return d;
   }
 
-  // YY/MM/DD or YY-MM-DD (2-digit year first, assume 2000s)
+  // YY/MM/DD or YY-MM-DD (2-digit year — use a pivot so old dates land in the 1900s.
+  // 00-50 -&gt; 2000-2050, 51-99 -&gt; 1951-1999. Adjust PIVOT if your data needs a different cutoff.
   m = str.match(/^(\d{2})[\/\-.](\d{1,2})[\/\-.](\d{1,2})$/);
   if (m) {
     const yy = parseInt(m[1]);
-    const year = 2000 + yy;
+    const PIVOT = 50;
+    const year = yy &lt;= PIVOT ? 2000 + yy : 1900 + yy;
     const d = new Date(year, parseInt(m[2]) - 1, parseInt(m[3]));
     if (!isNaN(d.getTime())) return d;
   }
