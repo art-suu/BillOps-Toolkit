@@ -2840,6 +2840,16 @@ window.addEventListener(&#x27;message&#x27;, function(e){
   .pill.bad { background: var(--bad-bg); color: var(--bad); border: 1px solid var(--bad); }
   .pill.total { background: var(--card); color: var(--accent); border: 1px solid var(--border); }
   .col-phone { color: var(--muted); font-size: 13px; white-space: nowrap; }
+  .age-tag {
+    font-size: 11.5px;
+    white-space: nowrap;
+  }
+  .age-tag.old {
+    color: var(--bad);
+    font-weight: 600;
+  }
+  .age-tag.normal { color: var(--muted); }
+  .pill.old { background: rgba(255,106,106,0.1); color: var(--bad); border: 1px solid var(--bad); }
   table {
     width: 100%;
     border-collapse: collapse;
@@ -2860,7 +2870,7 @@ window.addEventListener(&#x27;message&#x27;, function(e){
 &lt;body&gt;
 &lt;div class=&quot;container&quot;&gt;
   &lt;h1&gt;Bulk Date Comparison Tool&lt;/h1&gt;
-  &lt;p class=&quot;subtitle&quot;&gt;Paste a list of Completion Dates and a matching list of Org Dates (same order, one per line). Optionally add a matching list of telephone numbers to label each row. Completion Date must always be after Org Date.&lt;/p&gt;
+  &lt;p class=&quot;subtitle&quot;&gt;Paste a list of CD or RD dates and a matching list of Org Dates (same order, one per line). Optionally add a matching list of telephone numbers to label each row. CD or RD must always be after Org Date.&lt;/p&gt;
 
   &lt;div class=&quot;card&quot;&gt;
     &lt;div class=&quot;cols&quot;&gt;
@@ -2870,7 +2880,7 @@ window.addEventListener(&#x27;message&#x27;, function(e){
         &lt;div class=&quot;hint&quot;&gt;Optional. Same line order as the dates below — line 1 pairs with line 1, etc.&lt;/div&gt;
       &lt;/div&gt;
       &lt;div class=&quot;field&quot;&gt;
-        &lt;label for=&quot;completionList&quot;&gt;Completion Date (one per line)&lt;/label&gt;
+        &lt;label for=&quot;completionList&quot;&gt;CD or RD (one per line)&lt;/label&gt;
         &lt;textarea id=&quot;completionList&quot; placeholder=&quot;20260729&amp;#10;20260729&amp;#10;20260729&quot;&gt;&lt;/textarea&gt;
         &lt;div class=&quot;hint&quot;&gt;Accepts formats like 20260729, 2026-07-29, 26/07/29, 07/29/2026...&lt;/div&gt;
       &lt;/div&gt;
@@ -2892,9 +2902,9 @@ window.addEventListener(&#x27;message&#x27;, function(e){
         &lt;tr&gt;
           &lt;th class=&quot;row-num&quot;&gt;#&lt;/th&gt;
           &lt;th&gt;Telephone Number&lt;/th&gt;
-          &lt;th&gt;Completion Date&lt;/th&gt;
+          &lt;th&gt;CD or RD&lt;/th&gt;
           &lt;th&gt;Org Date&lt;/th&gt;
-          &lt;th&gt;Days Diff&lt;/th&gt;
+          &lt;th&gt;Age&lt;/th&gt;
           &lt;th&gt;Status&lt;/th&gt;
         &lt;/tr&gt;
       &lt;/thead&gt;
@@ -2952,6 +2962,16 @@ function formatDate(d) {
   return d.toLocaleDateString(undefined, { year: &#x27;numeric&#x27;, month: &#x27;short&#x27;, day: &#x27;numeric&#x27; });
 }
 
+// Whole calendar months between two dates (a should be the later date, e.g. today).
+// Returns 0 or negative if `a` is not after `b`.
+function monthsBetween(a, b) {
+  let months = (a.getFullYear() - b.getFullYear()) * 12 + (a.getMonth() - b.getMonth());
+  if (a.getDate() &lt; b.getDate()) months--;
+  return months;
+}
+
+const OLD_THRESHOLD_MONTHS = 10;
+
 let lastRows = [];
 let currentFilterMode = &#x27;all&#x27;;
 
@@ -2986,7 +3006,7 @@ function compareBulk() {
   }
 
   if (compLines.length !== orgLines.length) {
-    errorEl.textContent = `Line count mismatch: ${compLines.length} Completion Dates vs ${orgLines.length} Org Dates. Each line must be paired.`;
+    errorEl.textContent = `Line count mismatch: ${compLines.length} CD or RD dates vs ${orgLines.length} Org Dates. Each line must be paired.`;
     errorEl.classList.add(&#x27;show&#x27;);
   }
   if (phoneLines.length &gt; 0 &amp;&amp; phoneLines.length !== Math.min(compLines.length, orgLines.length)) {
@@ -2996,8 +3016,10 @@ function compareBulk() {
   }
 
   const rowCount = Math.min(compLines.length, orgLines.length);
-  let goodCount = 0, badCount = 0, parseErrors = [];
+  let goodCount = 0, badCount = 0, oldCount = 0, parseErrors = [];
   const rows = [];
+  const today = new Date();
+  today.setHours(0,0,0,0);
 
   for (let i = 0; i &lt; rowCount; i++) {
     const phoneStr = phoneLines[i] || &#x27;&#x27;;
@@ -3008,9 +3030,15 @@ function compareBulk() {
 
     if (!compDate || !orgDate) {
       parseErrors.push(`Row ${i + 1}: couldn&#x27;t parse &quot;${compStr}&quot; or &quot;${orgStr}&quot;`);
-      rows.push({ i, phoneStr, compStr, orgStr, status: &#x27;error&#x27;, diff: null });
+      rows.push({ i, phoneStr, compStr, orgStr, status: &#x27;error&#x27;, diff: null, ageMonths: null, isOld: false });
       continue;
     }
+
+    const compDateForAge = new Date(compDate.getTime());
+    compDateForAge.setHours(0,0,0,0);
+    const ageMonths = monthsBetween(today, compDateForAge);
+    const isOld = ageMonths &gt;= OLD_THRESHOLD_MONTHS;
+    if (isOld) oldCount++;
 
     const diffDays = Math.round((compDate.setHours(0,0,0,0) - orgDate.setHours(0,0,0,0)) / 86400000);
     const isGood = diffDays &gt;= 0;
@@ -3022,7 +3050,9 @@ function compareBulk() {
       compStr: formatDate(compDate),
       orgStr: formatDate(orgDate),
       diff: diffDays,
-      status: isGood ? &#x27;good&#x27; : &#x27;bad&#x27;
+      status: isGood ? &#x27;good&#x27; : &#x27;bad&#x27;,
+      ageMonths,
+      isOld
     });
   }
 
@@ -3038,8 +3068,9 @@ function compareBulk() {
   summaryEl.classList.add(&#x27;show&#x27;);
   summaryEl.innerHTML = `
     &lt;button type=&quot;button&quot; class=&quot;pill total active&quot; data-filter=&quot;all&quot;&gt;${rowCount} rows&lt;/button&gt;
-    &lt;button type=&quot;button&quot; class=&quot;pill good&quot; data-filter=&quot;good&quot;&gt;${goodCount} valid (completion on/after org)&lt;/button&gt;
+    &lt;button type=&quot;button&quot; class=&quot;pill good&quot; data-filter=&quot;good&quot;&gt;${goodCount} valid (CD/RD on/after org)&lt;/button&gt;
     &lt;button type=&quot;button&quot; class=&quot;pill bad&quot; data-filter=&quot;flagged&quot;&gt;${flaggedCount} flagged&lt;/button&gt;
+    &lt;button type=&quot;button&quot; class=&quot;pill old&quot; data-filter=&quot;old&quot;&gt;${oldCount} CD/RD 10mo+ old&lt;/button&gt;
   `;
 
   renderRows(&#x27;all&#x27;);
@@ -3047,23 +3078,29 @@ function compareBulk() {
 }
 
 function buildRowHtml(r) {
-  let statusText, diffText;
+  let statusText, ageText, ageClass = &#x27;normal&#x27;;
   if (r.status === &#x27;error&#x27;) {
     statusText = &#x27;⚠ Could not parse&#x27;;
-    diffText = &#x27;—&#x27;;
+    ageText = &#x27;—&#x27;;
   } else if (r.status === &#x27;good&#x27;) {
-    statusText = r.diff === 0 ? &#x27;✓ Same day&#x27; : `✓ OK (+${r.diff}d)`;
-    diffText = `${r.diff} day${r.diff === 1 ? &#x27;&#x27; : &#x27;s&#x27;}`;
+    statusText = r.diff === 0 ? &#x27;✓ Same day&#x27; : &#x27;✓ OK&#x27;;
   } else {
-    statusText = `✗ Before org (${r.diff}d)`;
-    diffText = `${r.diff} day${Math.abs(r.diff) === 1 ? &#x27;&#x27; : &#x27;s&#x27;}`;
+    statusText = &#x27;✗ Before org&#x27;;
+  }
+  if (r.status !== &#x27;error&#x27;) {
+    if (r.ageMonths &lt; 0) {
+      ageText = &#x27;future&#x27;;
+    } else {
+      ageText = `${r.ageMonths} mo`;
+      ageClass = r.isOld ? &#x27;old&#x27; : &#x27;normal&#x27;;
+    }
   }
   return `
     &lt;td class=&quot;row-num&quot;&gt;${r.i + 1}&lt;/td&gt;
     &lt;td class=&quot;col-phone&quot;&gt;${r.phoneStr ? escapeHtml(r.phoneStr) : &#x27;—&#x27;}&lt;/td&gt;
     &lt;td&gt;${r.compStr}&lt;/td&gt;
     &lt;td&gt;${r.orgStr}&lt;/td&gt;
-    &lt;td&gt;${diffText}&lt;/td&gt;
+    &lt;td class=&quot;age-tag ${ageClass}&quot;&gt;${r.isOld ? &#x27;⏳ &#x27; : &#x27;&#x27;}${ageText}&lt;/td&gt;
     &lt;td class=&quot;status&quot;&gt;${statusText}&lt;/td&gt;
   `;
 }
@@ -3075,6 +3112,7 @@ function renderRows(mode) {
   const visibleRows = lastRows.filter(r =&gt; {
     if (mode === &#x27;good&#x27;) return r.status === &#x27;good&#x27;;
     if (mode === &#x27;flagged&#x27;) return r.status !== &#x27;good&#x27;;
+    if (mode === &#x27;old&#x27;) return r.isOld;
     return true;
   });
 
