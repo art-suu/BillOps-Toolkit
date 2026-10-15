@@ -2923,6 +2923,39 @@ window.addEventListener(&#x27;message&#x27;, function(e){
       &lt;tbody id=&quot;resultBody&quot;&gt;&lt;/tbody&gt;
     &lt;/table&gt;
   &lt;/div&gt;
+
+  &lt;h1 style=&quot;margin-top:36px;&quot;&gt;F &amp;amp; T Orders — Partner Date Match Check&lt;/h1&gt;
+  &lt;p class=&quot;subtitle&quot;&gt;F and T orders are always a matched pair for the same PTN/PTN1. Paste both rows below — this flags any pair where Req Date, Due Date, or Com Date don&#x27;t all come out the same across both the F and the T order. The REMARK column is ignored.&lt;/p&gt;
+
+  &lt;div class=&quot;card&quot;&gt;
+    &lt;label for=&quot;ftInput&quot;&gt;Order data (paste as-is, one F row and one T row per order)&lt;/label&gt;
+    &lt;textarea id=&quot;ftInput&quot; style=&quot;min-height:160px;&quot; placeholder=&quot;F&amp;#9;226&amp;#9;3700460&amp;#9;01&amp;#9;226&amp;#9;3700460&amp;#9;BYPASS SPECIFIED&amp;#9;20261007&amp;#9;20261007&amp;#9;20261007&amp;#10;T&amp;#9;226&amp;#9;3700460&amp;#9;02&amp;#9;226&amp;#9;3700460&amp;#9;BYPASS SPECIFIED&amp;#9;20261007&amp;#9;20261007&amp;#9;20261007&quot;&gt;&lt;/textarea&gt;
+    &lt;div class=&quot;hint&quot;&gt;Expected columns, in order: Type (F or T), PTN, PTN1, sequence #, PTN, PTN1, REMARK (ignored), REQ DATE, DUE DATE, COM DATE. Dates in YYYYMMDD format. F and T rows for the same order are matched by PTN + PTN1.&lt;/div&gt;
+    &lt;div class=&quot;error&quot; id=&quot;ftErrorMsg&quot;&gt;&lt;/div&gt;
+    &lt;button onclick=&quot;checkFT()&quot;&gt;Check F&amp;amp;T Orders&lt;/button&gt;
+  &lt;/div&gt;
+
+  &lt;div class=&quot;summary&quot; id=&quot;ftSummary&quot;&gt;&lt;/div&gt;
+
+  &lt;div class=&quot;card&quot; id=&quot;ftResultCard&quot; style=&quot;display:none;&quot;&gt;
+    &lt;table&gt;
+      &lt;thead&gt;
+        &lt;tr&gt;
+          &lt;th class=&quot;row-num&quot;&gt;#&lt;/th&gt;
+          &lt;th&gt;PTN&lt;/th&gt;
+          &lt;th&gt;PTN1&lt;/th&gt;
+          &lt;th&gt;F · Req&lt;/th&gt;
+          &lt;th&gt;F · Due&lt;/th&gt;
+          &lt;th&gt;F · Com&lt;/th&gt;
+          &lt;th&gt;T · Req&lt;/th&gt;
+          &lt;th&gt;T · Due&lt;/th&gt;
+          &lt;th&gt;T · Com&lt;/th&gt;
+          &lt;th&gt;Status&lt;/th&gt;
+        &lt;/tr&gt;
+      &lt;/thead&gt;
+      &lt;tbody id=&quot;ftResultBody&quot;&gt;&lt;/tbody&gt;
+    &lt;/table&gt;
+  &lt;/div&gt;
 &lt;/div&gt;
 
 &lt;script&gt;
@@ -3150,6 +3183,197 @@ document.getElementById(&#x27;summary&#x27;).addEventListener(&#x27;click&#x27;,
   document.querySelectorAll(&#x27;#summary .pill&#x27;).forEach(p =&gt; p.classList.toggle(&#x27;active&#x27;, p === btn));
   renderRows(currentFilterMode);
 });
+
+// ---------------- F &amp; T Orders: partner date match check ----------------
+
+// Columns: TYPE(F/T)  PTN  PTN1  SEQ#  PTN  PTN1  REMARK(any text)  REQDATE  DUEDATE  COMDATE
+// REMARK is free text, so it&#x27;s captured lazily; the three trailing 8-digit
+// groups anchor the dates regardless of what the remark contains.
+const FT_LINE_RE = /^\s*([FT])\s+(\S+)\s+(\S+)\s+(\S+)\s+\S+\s+\S+\s+.*?(\d{8})\s+(\d{8})\s+(\d{8})\s*$/i;
+
+let lastFTPairs = [];
+let currentFTFilterMode = &#x27;all&#x27;;
+
+function checkFT() {
+  const raw = document.getElementById(&#x27;ftInput&#x27;).value;
+  const errorEl = document.getElementById(&#x27;ftErrorMsg&#x27;);
+  const summaryEl = document.getElementById(&#x27;ftSummary&#x27;);
+  const resultCard = document.getElementById(&#x27;ftResultCard&#x27;);
+
+  errorEl.classList.remove(&#x27;show&#x27;);
+  errorEl.textContent = &#x27;&#x27;;
+
+  const allLines = raw.split(&#x27;\n&#x27;).map(s =&gt; s.trim()).filter(s =&gt; s.length &gt; 0);
+  if (!allLines.length) {
+    errorEl.textContent = &#x27;Please paste at least one F or T order row.&#x27;;
+    errorEl.classList.add(&#x27;show&#x27;);
+    summaryEl.classList.remove(&#x27;show&#x27;);
+    resultCard.style.display = &#x27;none&#x27;;
+    return;
+  }
+
+  // Drop a leading header line, if present. A real order row always starts
+  // with F or T and ends in three 8-digit dates; a header row never does.
+  const dataLines = FT_LINE_RE.test(allLines[0]) ? allLines : allLines.slice(1);
+
+  const parseErrors = [];
+  const groups = new Map(); // key: ptn|ptn1 -&gt; { ptn, ptn1, F: entry|null, T: entry|null }
+
+  dataLines.forEach((line, idx) =&gt; {
+    const m = FT_LINE_RE.exec(line);
+    if (!m) {
+      parseErrors.push(`Row ${idx + 1}: couldn&#x27;t read Type/PTN/PTN1/dates from &quot;${line}&quot;`);
+      return;
+    }
+    const [, type, ptn, ptn1, , reqRaw, dueRaw, comRaw] = m;
+    const reqDate = parseDate(reqRaw);
+    const dueDate = parseDate(dueRaw);
+    const comDate = parseDate(comRaw);
+
+    if (!reqDate || !dueDate || !comDate) {
+      parseErrors.push(`Row ${idx + 1}: couldn&#x27;t parse one of the dates (&quot;${reqRaw}&quot;, &quot;${dueRaw}&quot;, &quot;${comRaw}&quot;)`);
+      return;
+    }
+
+    const key = ptn + &#x27;|&#x27; + ptn1;
+    if (!groups.has(key)) groups.set(key, { ptn, ptn1, F: null, T: null });
+    const g = groups.get(key);
+    const entry = { reqRaw, dueRaw, comRaw, reqDate, dueDate, comDate };
+    const typeUpper = type.toUpperCase();
+    if (typeUpper === &#x27;F&#x27;) g.F = entry; else g.T = entry;
+  });
+
+  if (parseErrors.length &gt; 0) {
+    errorEl.textContent = parseErrors.join(&#x27;\n&#x27;);
+    errorEl.classList.add(&#x27;show&#x27;);
+  }
+
+  let matchCount = 0, mismatchCount = 0, incompleteCount = 0;
+  const pairs = [];
+
+  [...groups.values()].forEach((g, idx) =&gt; {
+    if (!g.F || !g.T) {
+      incompleteCount++;
+      pairs.push({ i: idx, ptn: g.ptn, ptn1: g.ptn1, status: &#x27;incomplete&#x27;, F: g.F, T: g.T });
+      return;
+    }
+
+    // All six date fields (F&#x27;s req/due/com and T&#x27;s req/due/com) should be the
+    // same single date. Flag any field that doesn&#x27;t match the most common value.
+    const fields = [
+      { side: &#x27;F&#x27;, field: &#x27;req&#x27;, raw: g.F.reqRaw, key: g.F.reqDate.toDateString() },
+      { side: &#x27;F&#x27;, field: &#x27;due&#x27;, raw: g.F.dueRaw, key: g.F.dueDate.toDateString() },
+      { side: &#x27;F&#x27;, field: &#x27;com&#x27;, raw: g.F.comRaw, key: g.F.comDate.toDateString() },
+      { side: &#x27;T&#x27;, field: &#x27;req&#x27;, raw: g.T.reqRaw, key: g.T.reqDate.toDateString() },
+      { side: &#x27;T&#x27;, field: &#x27;due&#x27;, raw: g.T.dueRaw, key: g.T.dueDate.toDateString() },
+      { side: &#x27;T&#x27;, field: &#x27;com&#x27;, raw: g.T.comRaw, key: g.T.comDate.toDateString() },
+    ];
+    const counts = new Map();
+    fields.forEach(f =&gt; counts.set(f.key, (counts.get(f.key) || 0) + 1));
+    let expectedKey = fields[0].key, bestCount = 0;
+    counts.forEach((count, key) =&gt; { if (count &gt; bestCount) { bestCount = count; expectedKey = key; } });
+
+    const allMatch = counts.size === 1;
+    fields.forEach(f =&gt; { f.flagged = f.key !== expectedKey; });
+    if (allMatch) matchCount++; else mismatchCount++;
+
+    pairs.push({
+      i: idx,
+      ptn: g.ptn,
+      ptn1: g.ptn1,
+      status: allMatch ? &#x27;good&#x27; : &#x27;bad&#x27;,
+      cells: {
+        fReq: { text: formatDate(g.F.reqDate), flag: fields[0].flagged },
+        fDue: { text: formatDate(g.F.dueDate), flag: fields[1].flagged },
+        fCom: { text: formatDate(g.F.comDate), flag: fields[2].flagged },
+        tReq: { text: formatDate(g.T.reqDate), flag: fields[3].flagged },
+        tDue: { text: formatDate(g.T.dueDate), flag: fields[4].flagged },
+        tCom: { text: formatDate(g.T.comDate), flag: fields[5].flagged },
+      },
+    });
+  });
+
+  lastFTPairs = pairs;
+  currentFTFilterMode = &#x27;all&#x27;;
+  const pairCount = pairs.length;
+
+  summaryEl.classList.add(&#x27;show&#x27;);
+  summaryEl.innerHTML = `
+    &lt;button type=&quot;button&quot; class=&quot;pill total active&quot; data-filter=&quot;all&quot;&gt;${pairCount} orders&lt;/button&gt;
+    &lt;button type=&quot;button&quot; class=&quot;pill good&quot; data-filter=&quot;good&quot;&gt;${matchCount} match (F = T, all dates)&lt;/button&gt;
+    &lt;button type=&quot;button&quot; class=&quot;pill bad&quot; data-filter=&quot;bad&quot;&gt;${mismatchCount} flagged&lt;/button&gt;
+    ${incompleteCount ? `&lt;button type=&quot;button&quot; class=&quot;pill old&quot; data-filter=&quot;incomplete&quot;&gt;${incompleteCount} missing partner&lt;/button&gt;` : &#x27;&#x27;}
+  `;
+
+  renderFTRows(&#x27;all&#x27;);
+  resultCard.style.display = &#x27;block&#x27;;
+}
+
+function ftCell(cell) {
+  if (!cell) return &#x27;—&#x27;;
+  const style = cell.flag ? &#x27; style=&quot;color:var(--bad); font-weight:600;&quot;&#x27; : &#x27;&#x27;;
+  return `&lt;td${style}&gt;${cell.text}&lt;/td&gt;`;
+}
+
+function buildFTRowHtml(p) {
+  if (p.status === &#x27;incomplete&#x27;) {
+    const missing = p.F ? &#x27;T&#x27; : &#x27;F&#x27;;
+    return `
+      &lt;td class=&quot;row-num&quot;&gt;${p.i + 1}&lt;/td&gt;
+      &lt;td&gt;${escapeHtml(p.ptn)}&lt;/td&gt;
+      &lt;td&gt;${escapeHtml(p.ptn1)}&lt;/td&gt;
+      &lt;td colspan=&quot;6&quot; style=&quot;color:var(--muted);&quot;&gt;Only the ${p.F ? &#x27;F&#x27; : &#x27;T&#x27;} order was found — missing its ${missing} partner&lt;/td&gt;
+      &lt;td class=&quot;status&quot;&gt;⚠ Incomplete&lt;/td&gt;
+    `;
+  }
+  const statusText = p.status === &#x27;good&#x27; ? &#x27;✓ Match&#x27; : &#x27;✗ Mismatch&#x27;;
+  return `
+    &lt;td class=&quot;row-num&quot;&gt;${p.i + 1}&lt;/td&gt;
+    &lt;td&gt;${escapeHtml(p.ptn)}&lt;/td&gt;
+    &lt;td&gt;${escapeHtml(p.ptn1)}&lt;/td&gt;
+    ${ftCell(p.cells.fReq)}
+    ${ftCell(p.cells.fDue)}
+    ${ftCell(p.cells.fCom)}
+    ${ftCell(p.cells.tReq)}
+    ${ftCell(p.cells.tDue)}
+    ${ftCell(p.cells.tCom)}
+    &lt;td class=&quot;status&quot;&gt;${statusText}&lt;/td&gt;
+  `;
+}
+
+function renderFTRows(mode) {
+  const resultBody = document.getElementById(&#x27;ftResultBody&#x27;);
+  resultBody.innerHTML = &#x27;&#x27;;
+
+  const visibleRows = lastFTPairs.filter(p =&gt; {
+    if (mode === &#x27;good&#x27;) return p.status === &#x27;good&#x27;;
+    if (mode === &#x27;bad&#x27;) return p.status === &#x27;bad&#x27;;
+    if (mode === &#x27;incomplete&#x27;) return p.status === &#x27;incomplete&#x27;;
+    return true;
+  });
+
+  if (!visibleRows.length) {
+    const tr = document.createElement(&#x27;tr&#x27;);
+    tr.innerHTML = `&lt;td colspan=&quot;10&quot; style=&quot;text-align:center; color:var(--muted); padding:20px;&quot;&gt;No rows match this filter.&lt;/td&gt;`;
+    resultBody.appendChild(tr);
+    return;
+  }
+
+  visibleRows.forEach(p =&gt; {
+    const tr = document.createElement(&#x27;tr&#x27;);
+    tr.className = p.status === &#x27;good&#x27; ? &#x27;good&#x27; : &#x27;bad&#x27;;
+    tr.innerHTML = buildFTRowHtml(p);
+    resultBody.appendChild(tr);
+  });
+}
+
+document.getElementById(&#x27;ftSummary&#x27;).addEventListener(&#x27;click&#x27;, (e) =&gt; {
+  const btn = e.target.closest(&#x27;[data-filter]&#x27;);
+  if (!btn || !lastFTPairs.length) return;
+  currentFTFilterMode = btn.dataset.filter;
+  document.querySelectorAll(&#x27;#ftSummary .pill&#x27;).forEach(p =&gt; p.classList.toggle(&#x27;active&#x27;, p === btn));
+  renderFTRows(currentFTFilterMode);
+});
 &lt;/script&gt;
 
 &lt;script&gt;
@@ -3183,7 +3407,6 @@ window.addEventListener(&#x27;message&#x27;, function(e){
   tickOpsClock();
   setInterval(tickOpsClock, 1000);
 
-  // Theme toggle: applies to the outer shell and broadcasts to every embedded tool.
   const themeSwitch = document.getElementById('themeSwitch');
   let currentMode = 'dark';
 
