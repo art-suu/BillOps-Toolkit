@@ -2822,6 +2822,13 @@ window.addEventListener(&#x27;message&#x27;, function(e){
     font-family: inherit;
   }
   button:hover { background: #7cf29a; }
+  button.ghost {
+    background: transparent;
+    color: var(--muted);
+    border: 1px solid var(--border);
+    margin-left: 10px;
+  }
+  button.ghost:hover { background: transparent; color: var(--bad); border-color: var(--bad); }
   .error {
     color: var(--bad);
     font-size: 13px;
@@ -2904,6 +2911,7 @@ window.addEventListener(&#x27;message&#x27;, function(e){
     &lt;/div&gt;
     &lt;div class=&quot;error&quot; id=&quot;errorMsg&quot;&gt;&lt;/div&gt;
     &lt;button onclick=&quot;compareBulk()&quot;&gt;Compare All&lt;/button&gt;
+    &lt;button type=&quot;button&quot; class=&quot;ghost&quot; onclick=&quot;clearBulk()&quot;&gt;Clear&lt;/button&gt;
   &lt;/div&gt;
 
   &lt;div class=&quot;summary&quot; id=&quot;summary&quot;&gt;&lt;/div&gt;
@@ -2933,6 +2941,7 @@ window.addEventListener(&#x27;message&#x27;, function(e){
     &lt;div class=&quot;hint&quot;&gt;Expected columns, in order: Type (F or T), PTN, PTN1, sequence #, PTN, PTN1, REMARK (ignored), REQ DATE, DUE DATE, COM DATE. Dates in YYYYMMDD format. F and T rows for the same order are matched by PTN + PTN1.&lt;/div&gt;
     &lt;div class=&quot;error&quot; id=&quot;ftErrorMsg&quot;&gt;&lt;/div&gt;
     &lt;button onclick=&quot;checkFT()&quot;&gt;Check F&amp;amp;T Orders&lt;/button&gt;
+    &lt;button type=&quot;button&quot; class=&quot;ghost&quot; onclick=&quot;clearFT()&quot;&gt;Clear&lt;/button&gt;
   &lt;/div&gt;
 
   &lt;div class=&quot;summary&quot; id=&quot;ftSummary&quot;&gt;&lt;/div&gt;
@@ -3184,6 +3193,21 @@ document.getElementById(&#x27;summary&#x27;).addEventListener(&#x27;click&#x27;,
   renderRows(currentFilterMode);
 });
 
+function clearBulk() {
+  document.getElementById(&#x27;phoneList&#x27;).value = &#x27;&#x27;;
+  document.getElementById(&#x27;completionList&#x27;).value = &#x27;&#x27;;
+  document.getElementById(&#x27;orgList&#x27;).value = &#x27;&#x27;;
+  const errorEl = document.getElementById(&#x27;errorMsg&#x27;);
+  errorEl.classList.remove(&#x27;show&#x27;);
+  errorEl.textContent = &#x27;&#x27;;
+  document.getElementById(&#x27;summary&#x27;).classList.remove(&#x27;show&#x27;);
+  document.getElementById(&#x27;summary&#x27;).innerHTML = &#x27;&#x27;;
+  document.getElementById(&#x27;resultCard&#x27;).style.display = &#x27;none&#x27;;
+  document.getElementById(&#x27;resultBody&#x27;).innerHTML = &#x27;&#x27;;
+  lastRows = [];
+  currentFilterMode = &#x27;all&#x27;;
+}
+
 // ---------------- F &amp; T Orders: partner date match check ----------------
 
 // Columns: TYPE(F/T)  PTN  PTN1  SEQ#  PTN  PTN1  REMARK(any text)  REQDATE  DUEDATE  COMDATE
@@ -3374,6 +3398,19 @@ document.getElementById(&#x27;ftSummary&#x27;).addEventListener(&#x27;click&#x27
   document.querySelectorAll(&#x27;#ftSummary .pill&#x27;).forEach(p =&gt; p.classList.toggle(&#x27;active&#x27;, p === btn));
   renderFTRows(currentFTFilterMode);
 });
+
+function clearFT() {
+  document.getElementById(&#x27;ftInput&#x27;).value = &#x27;&#x27;;
+  const errorEl = document.getElementById(&#x27;ftErrorMsg&#x27;);
+  errorEl.classList.remove(&#x27;show&#x27;);
+  errorEl.textContent = &#x27;&#x27;;
+  document.getElementById(&#x27;ftSummary&#x27;).classList.remove(&#x27;show&#x27;);
+  document.getElementById(&#x27;ftSummary&#x27;).innerHTML = &#x27;&#x27;;
+  document.getElementById(&#x27;ftResultCard&#x27;).style.display = &#x27;none&#x27;;
+  document.getElementById(&#x27;ftResultBody&#x27;).innerHTML = &#x27;&#x27;;
+  lastFTPairs = [];
+  currentFTFilterMode = &#x27;all&#x27;;
+}
 &lt;/script&gt;
 
 &lt;script&gt;
